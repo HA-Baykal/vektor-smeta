@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    background-color: #f8fafc;
+    color: #0f172a;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-estimate,
+  #printable-estimate *,
+  #printable-contract,
+  #printable-contract * {
+    visibility: visible;
+  }
+  #printable-estimate,
+  #printable-contract {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 15px 30px;
+    background: white !important;
+    color: black !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
