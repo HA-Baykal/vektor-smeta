@@ -52,17 +52,23 @@ export const EstimateTable: React.FC<EstimateTableProps> = ({
       if (type === "docx") setIsExportingDocx(true);
       if (type === "pdf") setIsExportingPdf(true);
 
-      // For PDF with Russian support, use client-side canvas method that preserves Cyrillic
+      // For PDF on mobile, try client-side canvas method first for Cyrillic support
       if (type === "pdf") {
-        const { exportElementToPdf } = await import("@/lib/export-docx-pdf");
-        // Try to find printable element, if not in modal, use table element
-        const elementId = document.getElementById("printable-estimate") ? "printable-estimate" : "";
-        if (elementId) {
-          const pdf = await exportElementToPdf(elementId, `smeta-${inputs.modelName || "aircon"}`);
-          pdf.save(`smeta-${(inputs.modelName || "aircon").toLowerCase().replace(/[^a-zа-я0-9]/gi, "_").slice(0, 25)}.pdf`);
-          return;
+        const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+        // On desktop, try canvas method; on mobile, use server method with Cyrillic font
+        if (!isMobile) {
+          try {
+            const { exportElementToPdf } = await import("@/lib/export-docx-pdf");
+            const elementId = document.getElementById("printable-estimate") ? "printable-estimate" : "";
+            if (elementId) {
+              const pdf = await exportElementToPdf(elementId, `smeta-${inputs.modelName || "aircon"}`);
+              pdf.save(`smeta-${(inputs.modelName || "aircon").toLowerCase().replace(/[^a-zа-я0-9]/gi, "_").slice(0, 25)}.pdf`);
+              return;
+            }
+          } catch (e) {
+            console.log("Canvas PDF failed, fallback to server", e);
+          }
         }
-        // Fallback to server API if element not found
       }
 
       const res = await fetch(endpoints[type], {
@@ -73,53 +79,8 @@ export const EstimateTable: React.FC<EstimateTableProps> = ({
       if (!res.ok) throw new Error(`Ошибка формирования ${type.toUpperCase()}`);
       const blob = await res.blob();
       
-      // For Telegram Mini App, try to handle download differently
-      const tg = (window as any).Telegram?.WebApp;
-      const isInTelegram = !!tg;
-      
-      if (isInTelegram && type !== "excel") {
-        // In Telegram, try to open blob URL via openLink for better compatibility
-        const url = window.URL.createObjectURL(blob);
-        try {
-          if (tg.openLink) {
-            // For Telegram, we need to create a temporary URL that can be downloaded
-            // Use direct anchor click with download attribute - works better in WebView
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `smeta-${(inputs.modelName || "aircon").toLowerCase().replace(/[^a-zа-я0-9]/gi, "_").slice(0, 25)}.${extensions[type]}`;
-            a.style.display = "none";
-            document.body.appendChild(a);
-            a.click();
-            setTimeout(() => {
-              document.body.removeChild(a);
-              window.URL.revokeObjectURL(url);
-            }, 1000);
-          } else {
-            throw new Error("Telegram openLink not available");
-          }
-        } catch {
-          // Fallback to regular download
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `smeta-${(inputs.modelName || "aircon").toLowerCase().replace(/[^a-zа-я0-9]/gi, "_").slice(0, 25)}.${extensions[type]}`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          setTimeout(() => window.URL.revokeObjectURL(url), 1000);
-        }
-      } else {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `smeta-${(inputs.modelName || "aircon")
-          .toLowerCase()
-          .replace(/[^a-zа-я0-9]/gi, "_")
-          .slice(0, 25)}.${extensions[type]}`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
-      }
+      const { downloadBlob } = await import("@/lib/mobile-download");
+      await downloadBlob(blob, `smeta-${(inputs.modelName || "aircon").toLowerCase().replace(/[^a-zа-я0-9]/gi, "_").slice(0, 25)}.${extensions[type]}`);
     } catch (err) {
       alert(`Не удалось скачать ${type.toUpperCase()} файл: ` + (err as Error).message);
     } finally {

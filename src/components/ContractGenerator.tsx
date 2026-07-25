@@ -99,12 +99,19 @@ export const ContractGenerator: React.FC<ContractGeneratorProps> = ({
 
   const handleExportContract = async (type: "docx" | "pdf") => {
     try {
-      // For PDF with Russian support, use client-side canvas method
+      // For PDF, try client-side canvas first (better for mobile Cyrillic), fallback to server
       if (type === "pdf") {
-        const { exportElementToPdf } = await import("@/lib/export-docx-pdf");
-        const pdf = await exportElementToPdf("printable-contract", `dogovor_${contractNumber || "67"}`);
-        pdf.save(`dogovor_${contractNumber || "67"}.pdf`);
-        return;
+        const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+        if (!isMobile) {
+          try {
+            const { exportElementToPdf } = await import("@/lib/export-docx-pdf");
+            const pdf = await exportElementToPdf("printable-contract", `dogovor_${contractNumber || "67"}`);
+            pdf.save(`dogovor_${contractNumber || "67"}.pdf`);
+            return;
+          } catch (e) {
+            console.log("Canvas PDF failed, fallback to server", e);
+          }
+        }
       }
 
       const endpoint = type === "docx" ? "/api/export-docx" : "/api/export-pdf";
@@ -130,18 +137,8 @@ export const ContractGenerator: React.FC<ContractGeneratorProps> = ({
       if (!res.ok) throw new Error(`Ошибка ${type}`);
       const blob = await res.blob();
       
-      const tg = (window as any).Telegram?.WebApp;
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `dogovor_${contractNumber || "67"}.${type}`;
-      a.style.display = "none";
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-      }, 1000);
+      const { downloadBlob } = await import("@/lib/mobile-download");
+      await downloadBlob(blob, `dogovor_${contractNumber || "67"}.${type}`);
     } catch (e) {
       alert(`Не удалось скачать ${type.toUpperCase()}: ` + (e as Error).message);
     }

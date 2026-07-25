@@ -5,8 +5,16 @@ export function printElementById(elementId: string, title: string = "Докум�
     return;
   }
 
+  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+
   try {
-    // Create hidden iframe for printing - most reliable method
+    // For mobile, direct iframe print often fails - use new tab method which works better
+    if (isMobile) {
+      openPrintableInNewTab(elementId, title);
+      return;
+    }
+
+    // Desktop: iframe method
     const iframe = document.createElement("iframe");
     iframe.style.position = "fixed";
     iframe.style.right = "0";
@@ -22,7 +30,6 @@ export function printElementById(elementId: string, title: string = "Докум�
       throw new Error("Cannot access iframe document");
     }
 
-    // Collect styles but filter out problematic ones for print
     const styleElements = Array.from(document.querySelectorAll('style'));
     const styles = styleElements
       .map((el) => el.outerHTML)
@@ -31,85 +38,41 @@ export function printElementById(elementId: string, title: string = "Докум�
     const printStyles = `
       <style>
         * { box-sizing: border-box; }
-        body { 
-          font-family: Arial, Helvetica, sans-serif; 
-          margin: 0; 
-          padding: 20px; 
-          background: white !important; 
-          color: black !important;
-          font-size: 12px;
-          line-height: 1.4;
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-        }
+        body { font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 20px; background: white !important; color: black !important; font-size: 12px; line-height: 1.4; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         table { width: 100%; border-collapse: collapse; margin: 10px 0; }
         th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
         th { background: #f5f5f5 !important; font-weight: bold; }
         h1, h2, h3 { color: black !important; margin: 10px 0; }
         .no-print { display: none !important; }
-        @media print {
-          body { margin: 0; padding: 10px; }
-          @page { margin: 15mm; }
-        }
+        @media print { body { margin: 0; padding: 10px; } @page { margin: 15mm; } }
       </style>
     `;
 
     iframeDoc.open();
-    iframeDoc.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1">
-          <title>${title}</title>
-          ${styles}
-          ${printStyles}
-        </head>
-        <body>
-          ${element.innerHTML}
-        </body>
-      </html>
-    `);
+    iframeDoc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title>${styles}${printStyles}</head><body>${element.innerHTML}</body></html>`);
     iframeDoc.close();
 
-    // Wait for content to load, then print
     setTimeout(() => {
       try {
         const iframeWindow = iframe.contentWindow;
         if (iframeWindow) {
           iframeWindow.focus();
-          // For better compatibility, use small delay before print
           setTimeout(() => {
-            try {
-              iframeWindow.print();
-            } catch (e) {
-              // If iframe print fails, try window.print
-              window.print();
-            }
+            try { iframeWindow.print(); } catch (e) { window.print(); }
           }, 100);
         } else {
           window.print();
         }
       } catch (e) {
-        console.error("Iframe print failed, fallback to window.print", e);
         window.print();
       }
-
-      // Clean up iframe after print dialog closes
       setTimeout(() => {
-        if (document.body.contains(iframe)) {
-          document.body.removeChild(iframe);
-        }
+        if (document.body.contains(iframe)) document.body.removeChild(iframe);
       }, 2000);
     }, 400);
   } catch (error) {
     console.error("Print failed:", error);
-    // Ultimate fallback
-    try {
-      window.print();
-    } catch (e) {
-      alert("Не удалось открыть печать. Используйте выгрузку в Excel, DOCX или PDF.");
-    }
+    try { window.print(); } catch (e) { alert("Не удалось открыть печать. Используйте Excel, DOCX или PDF."); }
   }
 }
 
