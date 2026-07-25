@@ -97,6 +97,43 @@ export const ContractGenerator: React.FC<ContractGeneratorProps> = ({
     setTimeout(() => setCopied(false), 3000);
   };
 
+  const handleExportContract = async (type: "docx" | "pdf") => {
+    try {
+      const endpoint = type === "docx" ? "/api/export-docx" : "/api/export-pdf";
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "contract",
+          inputs,
+          contractData: {
+            contractNumber,
+            contractDate,
+            customerName,
+            customerAddress: `${customerAddress} ${customerApartment}`.trim(),
+            equipmentCost: equipmentCostManual,
+            consumablesCost: consumablesCostManual,
+            prepayment: prepaymentAmount,
+            finalPayment: finalPaymentAmount,
+            total: totalContractAmount,
+          },
+        }),
+      });
+      if (!res.ok) throw new Error(`Ошибка ${type}`);
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `dogovor_${contractNumber || "67"}.${type}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      alert(`Не удалось скачать ${type.toUpperCase()}: ` + (e as Error).message);
+    }
+  };
+
   const totalInWords = formatRublesInWords(totalContractAmount || 0);
   const prepaymentInWords = formatRublesInWords(prepaymentAmount || 0);
   const finalInWords = formatRublesInWords(finalPaymentAmount || 0);
@@ -122,18 +159,32 @@ export const ContractGenerator: React.FC<ContractGeneratorProps> = ({
               className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-98 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition cursor-pointer"
             >
               <Printer className="w-4 h-4" />
-              Печать / PDF
+              Печать
             </button>
             <button
               onClick={handleOpenContractInNewTab}
-              className="px-4 py-2.5 bg-slate-700 hover:bg-slate-600 active:scale-98 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition cursor-pointer"
+              className="px-3 py-2.5 bg-slate-700 hover:bg-slate-600 active:scale-98 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition cursor-pointer"
             >
               <ExternalLink className="w-4 h-4" />
               Новая вкладка
             </button>
             <button
+              onClick={() => handleExportContract("pdf")}
+              className="px-3 py-2.5 bg-red-600 hover:bg-red-700 active:scale-98 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition cursor-pointer"
+            >
+              <FileText className="w-4 h-4" />
+              PDF
+            </button>
+            <button
+              onClick={() => handleExportContract("docx")}
+              className="px-3 py-2.5 bg-blue-700 hover:bg-blue-800 active:scale-98 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition cursor-pointer"
+            >
+              <FileText className="w-4 h-4" />
+              DOCX
+            </button>
+            <button
               onClick={handleCopyContract}
-              className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 active:scale-98 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition cursor-pointer"
+              className="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 active:scale-98 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition cursor-pointer"
             >
               {copied ? (
                 <>
@@ -143,7 +194,7 @@ export const ContractGenerator: React.FC<ContractGeneratorProps> = ({
               ) : (
                 <>
                   <Copy className="w-4 h-4 text-blue-300" />
-                  Копировать текст
+                  Копировать
                 </>
               )}
             </button>

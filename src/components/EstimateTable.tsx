@@ -31,17 +31,33 @@ export const EstimateTable: React.FC<EstimateTableProps> = ({
 }) => {
   const [copied, setCopied] = useState(false);
   const [isExportingExcel, setIsExportingExcel] = useState(false);
+  const [isExportingDocx, setIsExportingDocx] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  const handleDownloadExcel = async () => {
+  const handleDownload = async (type: "excel" | "docx" | "pdf") => {
+    const endpoints: Record<string, string> = {
+      excel: "/api/export-excel",
+      docx: "/api/export-docx",
+      pdf: "/api/export-pdf",
+    };
+    const extensions: Record<string, string> = {
+      excel: "xlsx",
+      docx: "docx",
+      pdf: "pdf",
+    };
+
     try {
-      setIsExportingExcel(true);
-      const res = await fetch("/api/export-excel", {
+      if (type === "excel") setIsExportingExcel(true);
+      if (type === "docx") setIsExportingDocx(true);
+      if (type === "pdf") setIsExportingPdf(true);
+
+      const res = await fetch(endpoints[type], {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(inputs),
       });
-      if (!res.ok) throw new Error("Ошибка формирования Excel");
+      if (!res.ok) throw new Error(`Ошибка формирования ${type.toUpperCase()}`);
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -49,17 +65,23 @@ export const EstimateTable: React.FC<EstimateTableProps> = ({
       a.download = `smeta-${(inputs.modelName || "aircon")
         .toLowerCase()
         .replace(/[^a-zа-я0-9]/gi, "_")
-        .slice(0, 25)}.xlsx`;
+        .slice(0, 25)}.${extensions[type]}`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      alert("Не удалось скачать Excel файл: " + (err as Error).message);
+      alert(`Не удалось скачать ${type.toUpperCase()} файл: ` + (err as Error).message);
     } finally {
       setIsExportingExcel(false);
+      setIsExportingDocx(false);
+      setIsExportingPdf(false);
     }
   };
+
+  const handleDownloadExcel = () => handleDownload("excel");
+  const handleDownloadDocx = () => handleDownload("docx");
+  const handleDownloadPdf = () => handleDownload("pdf");
 
   const handleCopyText = () => {
     let msg = `❄️ *СМЕТА НА МОНТАЖ КОНДИЦИОНЕРА*\n`;
@@ -119,7 +141,7 @@ export const EstimateTable: React.FC<EstimateTableProps> = ({
         </div>
       </div>
 
-      {/* Action Toolbar */}
+      {/* Action Toolbar - Professional export options */}
       <div className="p-3 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center gap-2">
         <button
           onClick={handleDownloadExcel}
@@ -127,15 +149,33 @@ export const EstimateTable: React.FC<EstimateTableProps> = ({
           className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition cursor-pointer disabled:opacity-50"
         >
           <FileSpreadsheet className="w-4 h-4" />
-          {isExportingExcel ? "Формирование Excel..." : "Выгрузить в Excel (.xlsx)"}
+          {isExportingExcel ? "Excel..." : "Excel (.xlsx)"}
+        </button>
+
+        <button
+          onClick={handleDownloadDocx}
+          disabled={isExportingDocx}
+          className="px-3.5 py-2 bg-blue-700 hover:bg-blue-800 active:scale-98 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition cursor-pointer disabled:opacity-50"
+        >
+          <FileSpreadsheet className="w-4 h-4" />
+          {isExportingDocx ? "DOCX..." : "Word (.docx)"}
+        </button>
+
+        <button
+          onClick={handleDownloadPdf}
+          disabled={isExportingPdf}
+          className="px-3.5 py-2 bg-red-600 hover:bg-red-700 active:scale-98 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition cursor-pointer disabled:opacity-50"
+        >
+          <Printer className="w-4 h-4" />
+          {isExportingPdf ? "PDF..." : "PDF (.pdf)"}
         </button>
 
         <button
           onClick={onOpenPdf}
-          className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 active:scale-98 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition cursor-pointer"
+          className="px-3.5 py-2 bg-slate-600 hover:bg-slate-700 active:scale-98 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition cursor-pointer"
         >
           <Printer className="w-4 h-4" />
-          Печать / PDF
+          Предпросмотр печати
         </button>
 
         <button

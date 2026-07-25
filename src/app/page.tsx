@@ -8,8 +8,7 @@ import { ChatAssistant } from "@/components/ChatAssistant";
 import { EstimateHistory } from "@/components/EstimateHistory";
 import { ContractGenerator } from "@/components/ContractGenerator";
 import { AuthGuard } from "@/components/AuthGuard";
-import { TelegramProvider, useTelegram } from "@/components/TelegramProvider";
-import { AdminPanel } from "@/components/AdminPanel";
+import { TelegramProvider } from "@/components/TelegramProvider";
 import { PrintPdfModal } from "@/components/PrintPdfModal";
 import { TariffRulesModal } from "@/components/TariffRulesModal";
 import {
@@ -22,13 +21,11 @@ import {
   MessageSquare,
   History,
   FileText,
-  Settings,
 } from "lucide-react";
 
 function MainApp() {
-  const { isAdmin, isInTelegram } = useTelegram();
   const [activeTab, setActiveTab] = useState<
-    "builder" | "contract" | "chat" | "history" | "admin"
+    "builder" | "contract" | "chat" | "history"
   >("builder");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isPdfOpen, setIsPdfOpen] = useState(false);
@@ -177,18 +174,6 @@ function MainApp() {
             <History className="w-4 h-4" />
             История
           </button>
-
-          <button
-            onClick={() => setActiveTab("admin")}
-            className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 transition cursor-pointer shrink-0 ${
-              activeTab === "admin"
-                ? "bg-slate-900 text-white shadow-md shadow-slate-900/20"
-                : "bg-white text-slate-700 hover:bg-slate-200/80 border border-slate-200"
-            }`}
-          >
-            <Settings className="w-4 h-4 text-slate-500" />
-            Админ
-          </button>
         </div>
 
         {/* Mobile Menu with Arrow */}
@@ -220,12 +205,6 @@ function MainApp() {
                 <>
                   <History className="w-4 h-4 text-blue-400" />
                   <span>История смет</span>
-                </>
-              )}
-              {activeTab === "admin" && (
-                <>
-                  <Settings className="w-4 h-4 text-slate-400" />
-                  <span>Админ / Доступ</span>
                 </>
               )}
             </div>
@@ -274,22 +253,11 @@ function MainApp() {
                   setActiveTab("history");
                   setIsMobileMenuOpen(false);
                 }}
-                className={`w-full px-4 py-3 text-left text-sm font-semibold flex items-center gap-3 border-b border-slate-100 ${
+                className={`w-full px-4 py-3 text-left text-sm font-semibold flex items-center gap-3 ${
                   activeTab === "history" ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"
                 }`}
               >
                 <History className="w-4 h-4" /> История смет
-              </button>
-              <button
-                onClick={() => {
-                  setActiveTab("admin");
-                  setIsMobileMenuOpen(false);
-                }}
-                className={`w-full px-4 py-3 text-left text-sm font-semibold flex items-center gap-3 ${
-                  activeTab === "admin" ? "bg-slate-100 text-slate-900" : "text-slate-700 hover:bg-slate-50"
-                }`}
-              >
-                <Settings className="w-4 h-4" /> Админ / Доступ / Бот
               </button>
             </div>
           )}
@@ -351,8 +319,6 @@ function MainApp() {
             }}
           />
         )}
-
-        {activeTab === "admin" && <AdminPanel />}
       </main>
 
       <PrintPdfModal
