@@ -137,33 +137,7 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
   }
 
   if (isAuthorized) {
-    return (
-      <>
-        {children}
-        <div className="fixed bottom-3 right-3 z-50 no-print">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900/90 backdrop-blur-md border border-slate-700 rounded-full text-2xs text-slate-300 shadow-lg">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Устройство авторизовано</span>
-            <span className="text-slate-600">•</span>
-            <span className="font-mono text-slate-400">{deviceFingerprint.slice(0, 12)}</span>
-            {isInTelegram && user && (
-              <>
-                <span className="text-slate-600">•</span>
-                <span className="text-sky-300">TG: {user.first_name}</span>
-                {isAdmin && <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-300 rounded text-2xs font-bold">Админ</span>}
-              </>
-            )}
-            <button
-              onClick={handleLogout}
-              className="ml-1 p-1 hover:bg-slate-700 rounded-full transition"
-              title="Выйти и сбросить доступ"
-            >
-              <LogOut className="w-3 h-3 text-slate-400" />
-            </button>
-          </div>
-        </div>
-      </>
-    );
+    return <>{children}</>;
   }
 
   return (

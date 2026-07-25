@@ -18,6 +18,7 @@ export interface EstimateInputs {
   complexity: "standard" | "complex";
   complexityHours: number; // hours (e.g. 0, 2, 3)
   hasCableChannel: boolean;
+  cableChannelMeters?: number; // сколько метров трассы в кабель-канале (0 = нет)
   cableChannelPacks?: number;
   additionalItems?: Array<{ name: string; price: number; quantity: number; unit: string }>;
   discountType?: "none" | "percent" | "fixed";
@@ -39,6 +40,7 @@ export interface EstimateCalculationResult {
   complexityCost: number;
   cableChannelCost: number;
   cableChannelPacks: number;
+  cableChannelMeters: number;
   additionalWorksTotal: number;
   subtotal: number;
   discountAmount: number;
@@ -68,8 +70,18 @@ export function calculateEstimate(inputs: EstimateInputs): EstimateCalculationRe
   const extraTraceMeters = Math.max(0, trace - 5);
   const extraTraceCost = extraTraceMeters * EXTRA_TRACE_PRICE_PER_METER;
 
-  // 4. Cable duct: 1 pack = 2m, rounded up
-  const cableChannelPacks = hasCable ? Math.ceil(trace / 2) : 0;
+  // 4. Cable duct: 1 pack = 2m, rounded up - now with selectable meters
+  let cableChannelMeters = 0;
+  if (hasCable) {
+    const rawMeters = inputs.cableChannelMeters;
+    if (rawMeters !== undefined && rawMeters !== null && Number(rawMeters) > 0) {
+      cableChannelMeters = Math.min(Math.max(1, Math.round(Number(rawMeters))), trace);
+    } else {
+      // backward compat: if hasCable but meters not set, use full trace
+      cableChannelMeters = trace;
+    }
+  }
+  const cableChannelPacks = cableChannelMeters > 0 ? Math.ceil(cableChannelMeters / 2) : 0;
   const cableChannelCost = cableChannelPacks * CABLE_CHANNEL_PACK_PRICE;
 
   // 5. Additional optional custom items
@@ -196,6 +208,7 @@ export function calculateEstimate(inputs: EstimateInputs): EstimateCalculationRe
     complexityCost,
     cableChannelCost,
     cableChannelPacks,
+    cableChannelMeters,
     additionalWorksTotal,
     subtotal,
     discountAmount,

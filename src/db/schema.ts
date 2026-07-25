@@ -12,6 +12,7 @@ export const estimates = pgTable("estimates", {
   complexity: text("complexity").notNull().default("standard"), // 'standard' | 'complex'
   complexityHours: integer("complexity_hours").notNull().default(0),
   hasCableChannel: boolean("has_cable_channel").notNull().default(false),
+  cableChannelMeters: integer("cable_channel_meters").notNull().default(0),
   cableChannelPacks: integer("cable_channel_packs").notNull().default(0),
   additionalItemsJson: text("additional_items_json").default("[]"),
   discountType: text("discount_type").default("none"), // 'none' | 'percent' | 'fixed'

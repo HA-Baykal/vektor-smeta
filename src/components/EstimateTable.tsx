@@ -283,8 +283,8 @@ export const EstimateTable: React.FC<EstimateTableProps> = ({
           <div>
             Кабель-канал:{" "}
             <strong className="text-slate-900">
-              {inputs.hasCableChannel
-                ? `Да (${calculation.cableChannelPacks} упак. / ${calculation.cableChannelPacks * 2} м)`
+              {inputs.hasCableChannel && calculation.cableChannelMeters > 0
+                ? `Да (${calculation.cableChannelMeters} м, ${calculation.cableChannelPacks} упак.)`
                 : "Нет"}
             </strong>
           </div>

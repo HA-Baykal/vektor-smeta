@@ -30,6 +30,7 @@ function MainApp() {
   const [activeTab, setActiveTab] = useState<
     "builder" | "contract" | "chat" | "history" | "admin"
   >("builder");
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isPdfOpen, setIsPdfOpen] = useState(false);
   const [isTariffsOpen, setIsTariffsOpen] = useState(false);
   const [isSavingDb, setIsSavingDb] = useState(false);
@@ -44,6 +45,7 @@ function MainApp() {
     complexity: "standard",
     complexityHours: 0,
     hasCableChannel: false,
+    cableChannelMeters: 0,
     clientName: "Иван Сергеев",
     clientPhone: "+7 (999) 450-20-10",
     clientAddress: "г. Москва, ул. Ленина, д. 42",
@@ -66,6 +68,7 @@ function MainApp() {
       complexity: "standard",
       complexityHours: 0,
       hasCableChannel: false,
+      cableChannelMeters: 0,
       clientName: "",
       clientPhone: "",
       clientAddress: "",
@@ -123,8 +126,9 @@ function MainApp() {
     <div className="min-h-screen bg-slate-100 flex flex-col text-slate-900">
       <Navbar onOpenTariffs={() => setIsTariffsOpen(true)} onResetNew={handleResetNew} />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex items-center gap-2 mb-6 border-b border-slate-300/80 pb-3 overflow-x-auto">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-6">
+        {/* Desktop Tabs */}
+        <div className="hidden md:flex items-center gap-2 mb-6 border-b border-slate-300/80 pb-3 overflow-x-auto">
           <button
             onClick={() => setActiveTab("builder")}
             className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 transition cursor-pointer shrink-0 ${
@@ -134,7 +138,7 @@ function MainApp() {
             }`}
           >
             <Calculator className="w-4 h-4" />
-            Конструктор и таблица сметы
+            Конструктор
           </button>
 
           <button
@@ -146,7 +150,7 @@ function MainApp() {
             }`}
           >
             <FileText className="w-4 h-4 text-amber-500" />
-            Договор на оказание услуг
+            Договор
           </button>
 
           <button
@@ -158,7 +162,7 @@ function MainApp() {
             }`}
           >
             <MessageSquare className="w-4 h-4" />
-            ИИ-Ассистент «Сметчик» (Чат)
+            ИИ-Чат
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
           </button>
 
@@ -171,7 +175,7 @@ function MainApp() {
             }`}
           >
             <History className="w-4 h-4" />
-            История смет (БД)
+            История
           </button>
 
           <button
@@ -183,8 +187,112 @@ function MainApp() {
             }`}
           >
             <Settings className="w-4 h-4 text-slate-500" />
-            Админ / Доступ / GitHub / Бот
+            Админ
           </button>
+        </div>
+
+        {/* Mobile Menu with Arrow */}
+        <div className="md:hidden mb-4">
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="w-full px-4 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm flex items-center justify-between shadow-md"
+          >
+            <div className="flex items-center gap-2">
+              {activeTab === "builder" && (
+                <>
+                  <Calculator className="w-4 h-4 text-blue-400" />
+                  <span>Конструктор и смета</span>
+                </>
+              )}
+              {activeTab === "contract" && (
+                <>
+                  <FileText className="w-4 h-4 text-amber-400" />
+                  <span>Договор на оказание услуг</span>
+                </>
+              )}
+              {activeTab === "chat" && (
+                <>
+                  <MessageSquare className="w-4 h-4 text-emerald-400" />
+                  <span>ИИ-Ассистент (Чат)</span>
+                </>
+              )}
+              {activeTab === "history" && (
+                <>
+                  <History className="w-4 h-4 text-blue-400" />
+                  <span>История смет</span>
+                </>
+              )}
+              {activeTab === "admin" && (
+                <>
+                  <Settings className="w-4 h-4 text-slate-400" />
+                  <span>Админ / Доступ</span>
+                </>
+              )}
+            </div>
+            <div className={`w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center transition-transform ${isMobileMenuOpen ? "rotate-180" : ""}`}>
+              <span className="text-lg leading-none">⌄</span>
+            </div>
+          </button>
+
+          {isMobileMenuOpen && (
+            <div className="mt-2 bg-white rounded-xl border border-slate-200 shadow-lg overflow-hidden animate-in fade-in">
+              <button
+                onClick={() => {
+                  setActiveTab("builder");
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`w-full px-4 py-3 text-left text-sm font-semibold flex items-center gap-3 border-b border-slate-100 ${
+                  activeTab === "builder" ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                <Calculator className="w-4 h-4" /> Конструктор и таблица сметы
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("contract");
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`w-full px-4 py-3 text-left text-sm font-semibold flex items-center gap-3 border-b border-slate-100 ${
+                  activeTab === "contract" ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                <FileText className="w-4 h-4 text-amber-500" /> Договор на оказание услуг
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("chat");
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`w-full px-4 py-3 text-left text-sm font-semibold flex items-center gap-3 border-b border-slate-100 ${
+                  activeTab === "chat" ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                <MessageSquare className="w-4 h-4" /> ИИ-Ассистент (Чат)
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("history");
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`w-full px-4 py-3 text-left text-sm font-semibold flex items-center gap-3 border-b border-slate-100 ${
+                  activeTab === "history" ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                <History className="w-4 h-4" /> История смет
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("admin");
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`w-full px-4 py-3 text-left text-sm font-semibold flex items-center gap-3 ${
+                  activeTab === "admin" ? "bg-slate-100 text-slate-900" : "text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                <Settings className="w-4 h-4" /> Админ / Доступ / Бот
+              </button>
+            </div>
+          )}
         </div>
 
         {activeTab === "builder" && (

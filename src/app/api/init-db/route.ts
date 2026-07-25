@@ -40,6 +40,7 @@ export async function GET(req: NextRequest) {
         complexity TEXT NOT NULL DEFAULT 'standard',
         complexity_hours INTEGER NOT NULL DEFAULT 0,
         has_cable_channel BOOLEAN NOT NULL DEFAULT false,
+        cable_channel_meters INTEGER NOT NULL DEFAULT 0,
         cable_channel_packs INTEGER NOT NULL DEFAULT 0,
         additional_items_json TEXT DEFAULT '[]',
         discount_type TEXT DEFAULT 'none',

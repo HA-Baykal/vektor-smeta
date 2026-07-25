@@ -80,7 +80,10 @@ export const EstimateBuilder: React.FC<EstimateBuilderProps> = ({ inputs, onChan
   };
 
   const extraMeters = Math.max(0, (inputs.traceLength || 4) - 5);
-  const packsCount = inputs.hasCableChannel ? Math.ceil((inputs.traceLength || 4) / 2) : 0;
+  const cableMetersEffective = inputs.hasCableChannel
+    ? Math.min(inputs.cableChannelMeters && inputs.cableChannelMeters > 0 ? inputs.cableChannelMeters : (inputs.traceLength || 4), inputs.traceLength || 4)
+    : 0;
+  const packsCount = cableMetersEffective > 0 ? Math.ceil(cableMetersEffective / 2) : 0;
 
   return (
     <div className="space-y-6">
@@ -301,27 +304,35 @@ export const EstimateBuilder: React.FC<EstimateBuilderProps> = ({ inputs, onChan
             )}
           </div>
 
-          {/* 3. Cable duct */}
+          {/* 3. Cable duct with selectable meters */}
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
             <div>
               <label className="block text-xs font-bold text-slate-800 mb-2">
-                Кабель-канал (короб)
+                Кабель-канал (короб) — выбор метража
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 mb-3">
                 <button
                   type="button"
-                  onClick={() => updateField("hasCableChannel", false)}
+                  onClick={() => {
+                    updateField("hasCableChannel", false);
+                    updateField("cableChannelMeters", 0);
+                  }}
                   className={`px-3 py-2 rounded-xl text-xs font-semibold border transition cursor-pointer ${
                     !inputs.hasCableChannel
                       ? "bg-slate-800 text-white border-slate-800 shadow-xs"
                       : "bg-white text-slate-700 border-slate-300 hover:bg-slate-100"
                   }`}
                 >
-                  Открытая трасса
+                  Без короба (0 ₽)
                 </button>
                 <button
                   type="button"
-                  onClick={() => updateField("hasCableChannel", true)}
+                  onClick={() => {
+                    updateField("hasCableChannel", true);
+                    if (!inputs.cableChannelMeters || inputs.cableChannelMeters === 0) {
+                      updateField("cableChannelMeters", Math.min(2, inputs.traceLength || 4));
+                    }
+                  }}
                   className={`px-3 py-2 rounded-xl text-xs font-semibold border transition cursor-pointer ${
                     inputs.hasCableChannel
                       ? "bg-blue-600 text-white border-blue-600 shadow-xs"
@@ -331,16 +342,70 @@ export const EstimateBuilder: React.FC<EstimateBuilderProps> = ({ inputs, onChan
                   В кабель-канале
                 </button>
               </div>
+
+              {inputs.hasCableChannel && (
+                <div className="space-y-2 p-3 bg-white rounded-xl border border-blue-200">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-slate-700">Метров в кабель-канале:</span>
+                    <span className="font-bold font-mono text-blue-700 text-sm">
+                      {cableMetersEffective} м из {inputs.traceLength || 4} м трассы
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={1}
+                    max={inputs.traceLength || 4}
+                    step={1}
+                    value={cableMetersEffective}
+                    onChange={(e) => updateField("cableChannelMeters", parseInt(e.target.value, 10))}
+                    className="w-full accent-blue-600 h-2 bg-slate-200 rounded-lg cursor-pointer"
+                  />
+                  <div className="flex items-center justify-between text-2xs text-slate-500">
+                    <span>1 м</span>
+                    <span>{inputs.traceLength || 4} м (вся трасса)</span>
+                  </div>
+                  <div className="flex gap-1 flex-wrap">
+                    {[1, 2, 3, 4, 6, 8].filter(n => n <= (inputs.traceLength || 4)).map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => updateField("cableChannelMeters", m)}
+                        className={`px-2 py-1 rounded text-2xs font-semibold border ${
+                          cableMetersEffective === m
+                            ? "bg-blue-600 text-white border-blue-600"
+                            : "bg-slate-50 text-slate-600 border-slate-300 hover:bg-blue-50"
+                        }`}
+                      >
+                        {m} м
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => updateField("cableChannelMeters", inputs.traceLength || 4)}
+                      className={`px-2 py-1 rounded text-2xs font-semibold border ${
+                        cableMetersEffective === (inputs.traceLength || 4)
+                          ? "bg-blue-600 text-white border-blue-600"
+                          : "bg-slate-50 text-slate-600 border-slate-300 hover:bg-blue-50"
+                      }`}
+                    >
+                      Вся трасса
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="mt-3 text-xs pt-2 border-t border-slate-200">
-              {inputs.hasCableChannel ? (
+              {inputs.hasCableChannel && cableMetersEffective > 0 ? (
                 <div className="text-blue-800 font-medium">
-                  {inputs.traceLength || 4} м → {packsCount} упак. (по 2 м) ={" "}
+                  {cableMetersEffective} м в коробе → {packsCount} упак. × 2 м = {cableMetersEffective} м ={" "}
                   <strong>{(packsCount * CABLE_CHANNEL_PACK_PRICE).toLocaleString("ru-RU")} ₽</strong>
+                  <div className="text-2xs text-slate-500 mt-0.5">
+                    Остальная трасса {Math.max(0, (inputs.traceLength || 4) - cableMetersEffective)} м — открытая
+                  </div>
                 </div>
               ) : (
-                <div className="text-slate-500">Доплата 0 ₽ (трасса без пластикового короба)</div>
+                <div className="text-slate-500">Доплата 0 ₽ (без пластикового короба)</div>
               )}
             </div>
           </div>

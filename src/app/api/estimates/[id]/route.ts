@@ -67,6 +67,7 @@ export async function PUT(
         complexity: body.complexity === "complex" ? "complex" : "standard",
         complexityHours: Number(body.complexityHours) || 0,
         hasCableChannel: Boolean(body.hasCableChannel),
+        cableChannelMeters: Number(body.cableChannelMeters) || calc.cableChannelMeters || 0,
         cableChannelPacks: calc.cableChannelPacks,
         additionalItemsJson: JSON.stringify(body.additionalItems || []),
         discountType: body.discountType || "none",
