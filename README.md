@@ -55,3 +55,4 @@ Next.js 16 (App Router), PostgreSQL, Drizzle ORM, ExcelJS, Tailwind
 Юр. адрес: 109044, г. Москва, 3-й Крутицкий пер., д.11, помещ. 7Н
 Карта: +7(999)420-11-19 Т-Банк
 Монтажник: Кокорин Антон Олегович +7(908)640-11-66
+# Auto-deploy test Sat Jul 25 10:58:57 UTC 2026
