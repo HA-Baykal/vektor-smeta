@@ -103,7 +103,13 @@ export const ContractGenerator: React.FC<ContractGeneratorProps> = ({
 
   const handlePrintContract = async () => {
     await autoSave();
-    printElementById("printable-contract", `Договор_${contractNumber}_${customerName || "заказчик"}`);
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    if (isMobile) {
+      // On mobile, direct PDF download is more reliable than print
+      await handleExportContract("pdf");
+    } else {
+      printElementById("printable-contract", `Договор_${contractNumber}_${customerName || "заказчик"}`);
+    }
   };
 
   const handleOpenContractInNewTab = async () => {
@@ -193,21 +199,7 @@ export const ContractGenerator: React.FC<ContractGeneratorProps> = ({
               className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-98 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition cursor-pointer"
             >
               <Printer className="w-4 h-4" />
-              Печать
-            </button>
-            <button
-              onClick={handleOpenContractInNewTab}
-              className="px-3 py-2.5 bg-slate-700 hover:bg-slate-600 active:scale-98 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition cursor-pointer"
-            >
-              <ExternalLink className="w-4 h-4" />
-              Новая вкладка
-            </button>
-            <button
-              onClick={() => handleExportContract("pdf")}
-              className="px-3 py-2.5 bg-red-600 hover:bg-red-700 active:scale-98 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition cursor-pointer"
-            >
-              <FileText className="w-4 h-4" />
-              PDF
+              Печать / PDF
             </button>
             <button
               onClick={() => handleExportContract("docx")}

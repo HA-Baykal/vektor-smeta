@@ -36,14 +36,26 @@ export const PrintPdfModal: React.FC<PrintPdfModalProps> = ({
     try {
       if (onSaveToDatabase) await onSaveToDatabase();
     } catch {}
-    printElementById("printable-estimate", `Смета_${inputs.modelName || "кондиционер"}`);
-  };
 
-  const handleOpenInNewTab = async () => {
-    try {
-      if (onSaveToDatabase) await onSaveToDatabase();
-    } catch {}
-    openPrintableInNewTab("printable-estimate", `Смета_${inputs.modelName || "кондиционер"}`);
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    if (isMobile) {
+      try {
+        const res = await fetch("/api/export-pdf", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(inputs),
+        });
+        if (!res.ok) throw new Error("PDF error");
+        const blob = await res.blob();
+        const { downloadBlob } = await import("@/lib/mobile-download");
+        await downloadBlob(blob, `smeta-${(inputs.modelName || "aircon").toLowerCase().replace(/[^a-zа-я0-9]/gi, "_").slice(0, 25)}.pdf`);
+        return;
+      } catch (e) {
+        console.log("Mobile PDF fallback to print", e);
+      }
+    }
+
+    printElementById("printable-estimate", `Смета_${inputs.modelName || "кондиционер"}`);
   };
 
   return (
@@ -68,15 +80,7 @@ export const PrintPdfModal: React.FC<PrintPdfModalProps> = ({
               className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg flex items-center gap-2 transition shadow-xs"
             >
               <Printer className="w-4 h-4" />
-              Распечатать / PDF
-            </button>
-            <button
-              onClick={handleOpenInNewTab}
-              className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-medium rounded-lg flex items-center gap-1.5 transition shadow-xs"
-              title="Открыть в новой вкладке для печати (работает в Telegram)"
-            >
-              <ExternalLink className="w-4 h-4" />
-              Открыть в новой вкладке
+              Печать / Сохранить PDF
             </button>
             <button
               onClick={onDownloadExcel}
