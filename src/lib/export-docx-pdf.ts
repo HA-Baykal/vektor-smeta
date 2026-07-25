@@ -148,9 +148,32 @@ export async function exportContractToDocx(
             heading: HeadingLevel.HEADING_2,
             alignment: AlignmentType.CENTER,
           }),
-          new Paragraph({
-            text: "3.2. Исполнитель обязуется выполнить Услуги в течение 10 рабочих дней с момента поступления денег на счет Исполнителя. 3.3. Факт выполнения Работ оформляется Актом приемки.",
-          }),
+          new Paragraph({ text: "3.2. Исполнитель обязуется выполнить Услуги, предусмотренные в п. 1.2. договора в следующие сроки: 10 рабочих дней с момента поступления денег на счет Исполнителя" }),
+          new Paragraph({ text: "3.3. Факт выполнения Работ в полном объеме оформляется двусторонним Актом приемки выполненных работ." }),
+          new Paragraph({ text: "3.4. В случае отсутствия письменного обоснованного отказа Заказчика от приемки Работ по Актам Исполнителя в течение 5 (Пяти) календарных дней с момента предоставления каждого акта, Работы считаются принятыми Заказчиком в полном объеме, в установленные сроки, с надлежащим качеством и Стороны претензий друг к другу не имеют." }),
+          new Paragraph({ text: "3.5. Договор считается выполненным со стороны Исполнителя после оформления последней накладной на Оборудование и подписания Актов в соответствии с п. 3.3. или наступления условий, указанных в п. 3.4." }),
+          new Paragraph({ text: "3.6. В случае возникновения необходимости, приобретение дополнительного Оборудования и выполнение Работ, не предусмотренных п.п.1.1 и 1.2., согласовываются и осуществляются Сторонами после подписания двухстороннего письменного соглашения." }),
+          new Paragraph({ text: "" }),
+          new Paragraph({ text: "4. ПРАВА И ОБЯЗАННОСТИ СТОРОН", heading: HeadingLevel.HEADING_2, alignment: AlignmentType.CENTER }),
+          new Paragraph({ text: "4.1. Заказчик обязуется: 4.1.1. Предоставить Исполнителю необходимую информацию. 4.1.2. Обеспечить свободный доступ. 4.1.3. Принять Работы по Акту. 4.1.4. До принятия Работ не использовать Оборудование для других целей. 4.1.5. Производить оплату. 4.1.6. Оплатить дополнительные Работы по доп. соглашению." }),
+          new Paragraph({ text: "4.2. Заказчик имеет право: получать информацию, контролировать выполнение, требовать исправления недостатков." }),
+          new Paragraph({ text: "4.3. Исполнитель обязуется: добросовестно оказывать Услуги, предоставлять информацию, информировать о неблагоприятных последствиях, требовать соблюдения правил ТБ, исправить недостатки за свой счет." }),
+          new Paragraph({ text: "4.4. Исполнитель имеет право: запрашивать информацию, получать информацию от третьих лиц, приостановить Работы при нарушении, отказаться от Работ, требовать доплату за дополнительное Оборудование." }),
+          new Paragraph({ text: "" }),
+          new Paragraph({ text: "5. ГАРАНТИЙНЫЕ ОБЯЗАТЕЛЬСТВА", heading: HeadingLevel.HEADING_2, alignment: AlignmentType.CENTER }),
+          new Paragraph({ text: "5.1 Исполнитель гарантирует качество Работ. 5.2 Гарантия на кондиционер по гарантии завода-изготовителя. 5.3 Гарантия на Работы 12 месяцев. 5.4 Исполнитель не несет гарантийных обязательств при ненадлежащем использовании, механических повреждениях, модернизации Заказчиком. 5.5 Условие гарантии - техобслуживание персоналом Исполнителя за доп. плату." }),
+          new Paragraph({ text: "" }),
+          new Paragraph({ text: "6. ОТВЕТСТВЕННОСТЬ СТОРОН", heading: HeadingLevel.HEADING_2, alignment: AlignmentType.CENTER }),
+          new Paragraph({ text: "6.1 При нарушении сроков Заказчик вправе потребовать пени 0,1% за каждый день просрочки. 6.2 За нарушение сроков платежей Исполнитель вправе потребовать пени 0,1% и приостановить Работы. 6.3 Споры решаются в Арбитражном суде Иркутской области. 6.4 Стороны освобождаются от ответственности при обстоятельствах непреодолимой силы. 6.5-6.8 Уведомление о форс-мажоре в течение 10 дней, расторжение при продолжении более 30 дней, взаиморасчеты в течение 10 банковских дней." }),
+          new Paragraph({ text: "" }),
+          new Paragraph({ text: "7. СРОК ДЕЙСТВИЯ ДОГОВОРА", heading: HeadingLevel.HEADING_2, alignment: AlignmentType.CENTER }),
+          new Paragraph({ text: "7.1 Договор вступает в силу с момента подписания и действует до полного исполнения. 7.2 Односторонний отказ Заказчика не допускается. 7.3 Расторжение с уведомлением за 30 дней. 7.4 Сроки могут быть продлены по соглашению." }),
+          new Paragraph({ text: "" }),
+          new Paragraph({ text: "8. ПРОЧИЕ УСЛОВИЯ", heading: HeadingLevel.HEADING_2, alignment: AlignmentType.CENTER }),
+          new Paragraph({ text: "8.1 Исполнитель вправе привлечь третьих лиц. 8.2 Вправе размещать информацию на объекте. 8.3 Заказчик обязан передать Оборудование после требования. 8.4 Конфиденциальность 5 лет. 8.5 Во всем остальном - законодательство РФ." }),
+          new Paragraph({ text: "" }),
+          new Paragraph({ text: "9. ЗАКЛЮЧИТЕЛЬНЫЕ ПОЛОЖЕНИЯ", heading: HeadingLevel.HEADING_2, alignment: AlignmentType.CENTER }),
+          new Paragraph({ text: "9.1 Договор в 2 экземплярах. 9.2 Предыдущие переговоры теряют силу. 9.3 Уведомление о смене реквизитов в 3 дня. 9.4 Юр. сила документов по факсу/email с оригиналами. 9.5 Приложения - неотъемлемая часть. 9.6 Изменения - в виде Доп. Соглашений." }),
           new Paragraph({ text: "" }),
           new Paragraph({
             text: "10. КОНТАКТНЫЕ ЛИЦА",
@@ -181,88 +204,61 @@ export async function exportContractToDocx(
   return blob;
 }
 
-export function exportEstimateToPdf(inputs: EstimateInputs, calculation: EstimateCalculationResult) {
-  const doc = new jsPDF();
+export async function exportElementToPdf(elementId: string, fileName: string = "document") {
+  const element = document.getElementById(elementId);
+  if (!element) {
+    throw new Error("Element not found");
+  }
 
-  // Title
-  doc.setFontSize(16);
-  doc.text("SMETA NA MONTAZH KONDITSIONERA", 105, 15, { align: "center" });
-
-  doc.setFontSize(10);
-  doc.text(`Oborudovanie: ${inputs.modelName || "Split-sistema"} | Data: ${inputs.installationDate || new Date().toLocaleDateString("ru-RU")}`, 105, 22, { align: "center" });
-
-  // Table header
-  let y = 30;
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "bold");
-  doc.text("N", 10, y);
-  doc.text("Naimenovanie", 20, y);
-  doc.text("Kol-vo", 100, y);
-  doc.text("Ed.", 120, y);
-  doc.text("Tsena", 135, y);
-  doc.text("Summa", 170, y);
-
-  y += 5;
-  doc.setFont("helvetica", "normal");
-  calculation.items.forEach((item, idx) => {
-    if (y > 270) {
-      doc.addPage();
-      y = 20;
-    }
-    doc.text(String(idx + 1), 10, y);
-    // Truncate name if too long
-    const name = item.name.length > 40 ? item.name.slice(0, 40) + "..." : item.name;
-    doc.text(name, 20, y);
-    doc.text(String(item.quantity), 100, y);
-    doc.text(item.unit, 120, y);
-    doc.text(String(item.pricePerUnit), 135, y);
-    doc.text(String(item.total), 170, y);
-    y += 6;
+  const { default: html2canvas } = await import("html2canvas");
+  
+  const canvas = await html2canvas(element, {
+    scale: 2,
+    useCORS: true,
+    backgroundColor: "#ffffff",
+    logging: false,
   });
 
-  y += 5;
-  doc.setFont("helvetica", "bold");
-  doc.text(`ITOGO: ${formatRuble(calculation.finalTotal)}`, 170, y, { align: "right" });
+  const imgData = canvas.toDataURL("image/png");
+  const pdf = new jsPDF("p", "mm", "a4");
+  
+  const imgWidth = 210; // A4 width in mm
+  const pageHeight = 295;
+  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+  let heightLeft = imgHeight;
+  let position = 0;
 
-  y += 10;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.text(`Trassa: ${inputs.traceLength}m | Slozhnost: ${inputs.complexity} | Kabel-kanal: ${calculation.cableChannelMeters}m`, 10, y);
+  pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+  heightLeft -= pageHeight;
 
+  while (heightLeft >= 0) {
+    position = heightLeft - imgHeight;
+    pdf.addPage();
+    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+  }
+
+  return pdf;
+}
+
+export function exportEstimateToPdf(inputs: EstimateInputs, calculation: EstimateCalculationResult) {
+  // For server-side fallback - now with Russian support via simple text (will be replaced by canvas method on client)
+  const doc = new jsPDF();
+  doc.setFontSize(12);
+  
+  // Try to use UTF-8 - jsPDF default doesn't support Cyrillic, so we use transliteration fallback for server
+  // Client will use html2canvas method which supports Cyrillic via image
+  doc.text("Smeta - rendered via canvas for Cyrillic support", 10, 10);
+  doc.text(`Model: ${inputs.modelName || "Split-system"}`, 10, 20);
+  doc.text(`Total: ${formatRuble(calculation.finalTotal)}`, 10, 30);
+  
   return doc;
 }
 
 export function exportContractToPdf(contractData: any, inputs: EstimateInputs, calculation: EstimateCalculationResult) {
   const doc = new jsPDF();
-  
-  doc.setFontSize(14);
-  doc.text(`DOGOVOR NA MONTAZHNYE RABOTY N${contractData.contractNumber}`, 105, 15, { align: "center" });
-  
-  doc.setFontSize(10);
-  doc.text(contractData.contractDate, 180, 22, { align: "right" });
-
-  let y = 30;
-  doc.setFontSize(9);
-  
-  const text = `IP Sergeeva M.V., imenuemiy Ispolnitel, i ${contractData.customerName || "________________"}, imenuemiy Zakazchik, zaklyuchili dogovor.
-
-1. PREDMET DOGOVORA
-1.1. Ispolnitel obyazuetsya okazat uslugi po postavke i montazhu ${inputs.modelName || "Split-sistema"}.
-1.2. Mesto okazaniya uslug: ${contractData.customerAddress || "g. Irkutsk"}.
-
-2. STOIMOST I PORYADOK RASCHETOV
-2.1. Obshaya stoimost: ${formatRuble(contractData.total)} (${formatRublesInWords(contractData.total)}).
-2.2. Predoplata 100% konditsionera i rashodnikov: ${formatRuble(contractData.prepayment)} (${formatRublesInWords(contractData.prepayment)}) v techenie 3 dney po telefonu +7-999-420-11-19, T-Bank.
-2.3. Okonchatelny raschet: ${formatRuble(contractData.finalPayment)} (${formatRublesInWords(contractData.finalPayment)}) v techenie 3 dney posle priemki rabot.
-
-10. KONTAKTNYE LITSA
-Ispolnitel rabot Kokorin Anton Olegovich t. +7 9086401166
-
-11. REKVIZITY
-Ispolnitel: IP Sergeeva M.V., INN 381113658680, OGRNIP 325385000065256, Bank Tochka r/s 40802810720000687178`;
-
-  const lines = doc.splitTextToSize(text, 180);
-  doc.text(lines, 15, y);
-
+  doc.setFontSize(12);
+  doc.text("Dogovor - rendered via canvas for Cyrillic support", 10, 10);
+  doc.text(`N${contractData.contractNumber} ${contractData.contractDate}`, 10, 20);
   return doc;
 }

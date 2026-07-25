@@ -99,6 +99,14 @@ export const ContractGenerator: React.FC<ContractGeneratorProps> = ({
 
   const handleExportContract = async (type: "docx" | "pdf") => {
     try {
+      // For PDF with Russian support, use client-side canvas method
+      if (type === "pdf") {
+        const { exportElementToPdf } = await import("@/lib/export-docx-pdf");
+        const pdf = await exportElementToPdf("printable-contract", `dogovor_${contractNumber || "67"}`);
+        pdf.save(`dogovor_${contractNumber || "67"}.pdf`);
+        return;
+      }
+
       const endpoint = type === "docx" ? "/api/export-docx" : "/api/export-pdf";
       const res = await fetch(endpoint, {
         method: "POST",
@@ -121,14 +129,19 @@ export const ContractGenerator: React.FC<ContractGeneratorProps> = ({
       });
       if (!res.ok) throw new Error(`Ошибка ${type}`);
       const blob = await res.blob();
+      
+      const tg = (window as any).Telegram?.WebApp;
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = `dogovor_${contractNumber || "67"}.${type}`;
+      a.style.display = "none";
       document.body.appendChild(a);
       a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
+      setTimeout(() => {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }, 1000);
     } catch (e) {
       alert(`Не удалось скачать ${type.toUpperCase()}: ` + (e as Error).message);
     }
