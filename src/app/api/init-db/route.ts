@@ -58,6 +58,20 @@ export async function GET(req: NextRequest) {
       );
     `);
 
+    // Add missing columns for existing tables (for migrations)
+    await pool.query(`ALTER TABLE estimates ADD COLUMN IF NOT EXISTS cable_channel_meters INTEGER NOT NULL DEFAULT 0;`);
+    await pool.query(`ALTER TABLE estimates ADD COLUMN IF NOT EXISTS discount_type TEXT DEFAULT 'none';`);
+    await pool.query(`ALTER TABLE estimates ADD COLUMN IF NOT EXISTS discount_value INTEGER DEFAULT 0;`);
+    await pool.query(`ALTER TABLE estimates ADD COLUMN IF NOT EXISTS vat_type TEXT DEFAULT 'none';`);
+    await pool.query(`ALTER TABLE estimates ADD COLUMN IF NOT EXISTS has_cable_channel BOOLEAN NOT NULL DEFAULT false;`);
+    await pool.query(`ALTER TABLE estimates ADD COLUMN IF NOT EXISTS cable_channel_packs INTEGER NOT NULL DEFAULT 0;`);
+    await pool.query(`ALTER TABLE estimates ADD COLUMN IF NOT EXISTS additional_items_json TEXT DEFAULT '[]';`);
+    await pool.query(`ALTER TABLE estimates ADD COLUMN IF NOT EXISTS client_name TEXT DEFAULT '';`);
+    await pool.query(`ALTER TABLE estimates ADD COLUMN IF NOT EXISTS client_phone TEXT DEFAULT '';`);
+    await pool.query(`ALTER TABLE estimates ADD COLUMN IF NOT EXISTS client_address TEXT DEFAULT '';`);
+    await pool.query(`ALTER TABLE estimates ADD COLUMN IF NOT EXISTS installation_date TEXT DEFAULT '';`);
+    await pool.query(`ALTER TABLE estimates ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT '';`);
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS access_codes (
         id SERIAL PRIMARY KEY,
@@ -71,6 +85,22 @@ export async function GET(req: NextRequest) {
         created_by_telegram_id TEXT,
         created_by_telegram_username TEXT,
         note TEXT DEFAULT ''
+      );
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id SERIAL PRIMARY KEY,
+        action TEXT NOT NULL,
+        entity_type TEXT NOT NULL,
+        entity_id INTEGER,
+        entity_data_json TEXT,
+        performed_by TEXT,
+        performed_by_telegram_id TEXT,
+        ip_address TEXT,
+        user_agent TEXT,
+        note TEXT DEFAULT '',
+        created_at TIMESTAMPTZ DEFAULT NOW()
       );
     `);
 

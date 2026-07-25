@@ -43,6 +43,20 @@ export const accessCodes = pgTable("access_codes", {
   note: text("note").default(""),
 });
 
+export const auditLogs = pgTable("audit_logs", {
+  id: serial("id").primaryKey(),
+  action: text("action").notNull(),
+  entityType: text("entity_type").notNull(),
+  entityId: integer("entity_id"),
+  entityDataJson: text("entity_data_json"),
+  performedBy: text("performed_by"),
+  performedByTelegramId: text("performed_by_telegram_id"),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  note: text("note").default(""),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
 export type Estimate = typeof estimates.$inferSelect;
 export type NewEstimate = typeof estimates.$inferInsert;
 export type AccessCode = typeof accessCodes.$inferSelect;

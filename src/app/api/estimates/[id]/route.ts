@@ -103,12 +103,40 @@ export async function DELETE(
       return NextResponse.json({ success: false, message: "DATABASE_URL not configured" }, { status: 500 });
     }
     const { db } = await import("@/db");
-    const { estimates } = await import("@/db/schema");
+    const { estimates, auditLogs } = await import("@/db/schema");
     const { eq } = await import("drizzle-orm");
 
     const { id } = await context.params;
     const numId = parseInt(id, 10);
+
+    // Get entity data before deleting for audit log
+    const existing = await db.select().from(estimates).where(eq(estimates.id, numId)).limit(1);
+    const entityData = existing.length > 0 ? existing[0] : null;
+
     await db.delete(estimates).where(eq(estimates.id, numId));
+
+    // Log deletion to audit_logs
+    try {
+      const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "";
+      const userAgent = req.headers.get("user-agent") || "";
+      const url = new URL(req.url);
+      const performedBy = url.searchParams.get("adminId") || url.searchParams.get("performedBy") || "";
+
+      await db.insert(auditLogs).values({
+        action: "delete",
+        entityType: "estimate",
+        entityId: numId,
+        entityDataJson: entityData ? JSON.stringify(entityData) : null,
+        performedBy: performedBy || "unknown",
+        ipAddress: ip,
+        userAgent: userAgent,
+        note: `Удалена смета #${numId}: ${entityData?.title || entityData?.modelName || ""}`,
+      });
+    } catch (logError) {
+      console.error("Failed to log audit:", logError);
+      // Don't fail main operation if logging fails
+    }
+
     return NextResponse.json({ success: true, message: "Смета удалена" });
   } catch (error) {
     return NextResponse.json(
