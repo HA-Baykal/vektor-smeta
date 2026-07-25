@@ -2,7 +2,8 @@
 
 import React from "react";
 import { EstimateInputs, EstimateCalculationResult, formatRuble } from "@/lib/calculator";
-import { Printer, Download, X, CheckCircle2, ShieldCheck } from "lucide-react";
+import { Printer, Download, X, CheckCircle2, ShieldCheck, ExternalLink } from "lucide-react";
+import { printElementById, openPrintableInNewTab } from "@/lib/print";
 
 interface PrintPdfModalProps {
   inputs: EstimateInputs;
@@ -30,7 +31,11 @@ export const PrintPdfModal: React.FC<PrintPdfModalProps> = ({
     });
 
   const handlePrint = () => {
-    window.print();
+    printElementById("printable-estimate", `Смета_${inputs.modelName || "кондиционер"}`);
+  };
+
+  const handleOpenInNewTab = () => {
+    openPrintableInNewTab("printable-estimate", `Смета_${inputs.modelName || "кондиционер"}`);
   };
 
   return (
@@ -49,13 +54,21 @@ export const PrintPdfModal: React.FC<PrintPdfModalProps> = ({
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={handlePrint}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg flex items-center gap-2 transition shadow-xs"
             >
               <Printer className="w-4 h-4" />
               Распечатать / PDF
+            </button>
+            <button
+              onClick={handleOpenInNewTab}
+              className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-medium rounded-lg flex items-center gap-1.5 transition shadow-xs"
+              title="Открыть в новой вкладке для печати (работает в Telegram)"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Открыть в новой вкладке
             </button>
             <button
               onClick={onDownloadExcel}

@@ -15,7 +15,9 @@
   #printable-estimate,
   #printable-estimate *,
   #printable-contract,
-  #printable-contract * {
+  #printable-contract *,
+  #printable-estimate-root,
+  #printable-contract-root {
     visibility: visible;
   }
   #printable-estimate,
@@ -28,8 +30,14 @@
     padding: 15px 30px;
     background: white !important;
     color: black !important;
+    box-shadow: none !important;
   }
   .no-print {
     display: none !important;
+  }
+  /* Ensure tables print with colors */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }

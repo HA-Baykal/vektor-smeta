@@ -15,7 +15,9 @@ import {
   Calendar,
   Wrench,
   AlertCircle,
+  ExternalLink,
 } from "lucide-react";
+import { printElementById, openPrintableInNewTab } from "@/lib/print";
 
 interface ContractGeneratorProps {
   inputs: EstimateInputs;
@@ -78,7 +80,11 @@ export const ContractGenerator: React.FC<ContractGeneratorProps> = ({
   };
 
   const handlePrintContract = () => {
-    window.print();
+    printElementById("printable-contract", `Договор_${contractNumber}_${customerName || "клиент"}`);
+  };
+
+  const handleOpenContractInNewTab = () => {
+    openPrintableInNewTab("printable-contract", `Договор_${contractNumber}_${customerName || "клиент"}`);
   };
 
   const handleCopyContract = () => {
@@ -126,13 +132,21 @@ export const ContractGenerator: React.FC<ContractGeneratorProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
             <button
               onClick={handlePrintContract}
               className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-98 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition cursor-pointer"
             >
               <Printer className="w-4 h-4" />
-              Распечатать / Сохранить в PDF
+              Распечатать / PDF
+            </button>
+            <button
+              onClick={handleOpenContractInNewTab}
+              className="px-4 py-2.5 bg-slate-700 hover:bg-slate-600 active:scale-98 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition cursor-pointer"
+              title="Открыть в новой вкладке — работает в Telegram Mini App"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Открыть в новой вкладке
             </button>
             <button
               onClick={handleCopyContract}
