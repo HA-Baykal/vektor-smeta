@@ -2,12 +2,14 @@
 
 import React, { useState, useEffect } from "react";
 import { Snowflake, KeyRound, ShieldCheck, Smartphone, AlertTriangle, Lock, Check, Eye, EyeOff, LogOut } from "lucide-react";
+import { useTelegram } from "./TelegramProvider";
 
 interface AuthGuardProps {
   children: React.ReactNode;
 }
 
 export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
+  const { isInTelegram, user, isAdmin, isTelegramReady } = useTelegram();
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
   const [isChecking, setIsChecking] = useState(true);
   const [code, setCode] = useState("");
@@ -17,12 +19,10 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
   const [showCode, setShowCode] = useState(false);
   const [deviceFingerprint, setDeviceFingerprint] = useState<string>("");
 
-  // Инициализация fingerprint устройства
   const getOrCreateFingerprint = (): string => {
     if (typeof window === "undefined") return "";
     let fp = localStorage.getItem("device_fingerprint");
     if (!fp) {
-      // Создаем уникальный отпечаток устройства
       const raw = `${navigator.userAgent}|${screen.width}x${screen.height}|${navigator.language}|${Intl.DateTimeFormat().resolvedOptions().timeZone}`;
       const hash = btoa(raw)
         .replace(/[^A-Z0-9]/gi, "")
@@ -44,17 +44,14 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
         setIsAuthorized(true);
         localStorage.setItem("is_authorized", "true");
       } else {
-        // Также проверяем локальный флаг для оффлайн-работы
         const localAuth = localStorage.getItem("is_authorized");
         if (localAuth === "true") {
-          // Повторно проверяем на сервере через 2 сек, но пока даем доступ
           setIsAuthorized(true);
         } else {
           setIsAuthorized(false);
         }
       }
     } catch {
-      // При ошибке сети — проверяем локальный флаг
       const localAuth = localStorage.getItem("is_authorized");
       if (localAuth === "true" && getOrCreateFingerprint()) {
         setIsAuthorized(true);
@@ -67,8 +64,10 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
   };
 
   useEffect(() => {
-    checkExistingAuth();
-  }, []);
+    if (isTelegramReady) {
+      checkExistingAuth();
+    }
+  }, [isTelegramReady]);
 
   const handleVerify = async () => {
     if (!code.trim()) {
@@ -115,21 +114,22 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
   const handleLogout = () => {
     if (!confirm("Выйти из системы? Это устройство потеряет доступ и потребуется новый одноразовый код.")) return;
     localStorage.removeItem("is_authorized");
-    // Не удаляем fingerprint — но отвязываем на сервере? Для простоты оставляем, но сбрасываем флаг
     setIsAuthorized(false);
     setCode("");
     setError(null);
     setSuccessInfo(null);
   };
 
-  if (isChecking || isAuthorized === null) {
+  if (isChecking || isAuthorized === null || !isTelegramReady) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
         <div className="text-center space-y-4">
           <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-500 flex items-center justify-center animate-pulse shadow-xl shadow-blue-500/20">
             <Snowflake className="w-8 h-8 text-white animate-spin-slow" />
           </div>
-          <div className="text-white font-semibold">Проверка доступа устройства...</div>
+          <div className="text-white font-semibold">
+            {isInTelegram ? "Загрузка Telegram Mini App..." : "Проверка доступа устройства..."}
+          </div>
           <div className="text-xs text-slate-400">Сверка отпечатка: {deviceFingerprint.slice(0, 18)}...</div>
         </div>
       </div>
@@ -137,7 +137,6 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
   }
 
   if (isAuthorized) {
-    // Показываем небольшое напоминание о защищенном режиме в углу
     return (
       <>
         {children}
@@ -147,6 +146,13 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
             <span>Устройство авторизовано</span>
             <span className="text-slate-600">•</span>
             <span className="font-mono text-slate-400">{deviceFingerprint.slice(0, 12)}</span>
+            {isInTelegram && user && (
+              <>
+                <span className="text-slate-600">•</span>
+                <span className="text-sky-300">TG: {user.first_name}</span>
+                {isAdmin && <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-300 rounded text-2xs font-bold">Админ</span>}
+              </>
+            )}
             <button
               onClick={handleLogout}
               className="ml-1 p-1 hover:bg-slate-700 rounded-full transition"
@@ -160,24 +166,29 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
     );
   }
 
-  // Экран ввода кода — если не авторизован
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo Header */}
         <div className="text-center mb-8">
           <div className="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-400 flex items-center justify-center shadow-2xl shadow-blue-600/30 mb-4">
             <Snowflake className="w-10 h-10 text-white" />
           </div>
           <h1 className="text-3xl font-black text-white tracking-tight">СМЕТЧИК</h1>
-          <p className="text-sm text-blue-200/70 mt-1">ИИ-Ассистент монтажа кондиционеров</p>
+          <p className="text-sm text-blue-200/70 mt-1">
+            {isInTelegram ? "Telegram Mini App — монтаж кондиционеров" : "ИИ-Ассистент монтажа кондиционеров"}
+          </p>
+          {isInTelegram && user && (
+            <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-sky-500/10 border border-sky-500/20 rounded-full text-xs text-sky-300">
+              <span>👋 Привет, {user.first_name}!</span>
+              {isAdmin && <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded-full font-bold">Админ — можете генерировать коды</span>}
+            </div>
+          )}
           <div className="inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-2xs font-bold text-amber-300">
             <Lock className="w-3 h-3" />
             Защищённый доступ — одноразовый код + привязка к устройству
           </div>
         </div>
 
-        {/* Login Card */}
         <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-7">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
@@ -185,7 +196,13 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
             </div>
             <div>
               <h2 className="font-bold text-base text-slate-900">Вход по одноразовому коду</h2>
-              <p className="text-xs text-slate-500">Код генерируется в Telegram-боте</p>
+              <p className="text-xs text-slate-500">
+                {isInTelegram
+                  ? isAdmin
+                    ? "Вы админ — можете генерировать коды для других прямо в боте"
+                    : "Попросите код у администратора в боте"
+                  : "Код генерируется в Telegram-боте @Vektor_smeta_bot"}
+              </p>
             </div>
           </div>
 
@@ -218,6 +235,11 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
                 <Smartphone className="w-3 h-3 text-blue-500" />
                 Это устройство: <span className="font-mono font-bold text-slate-700">{deviceFingerprint}</span>
               </div>
+              {isInTelegram && (
+                <div className="mt-2 text-2xs text-sky-600 bg-sky-50 border border-sky-200 rounded-lg p-2">
+                  📲 Вы внутри Telegram Mini App. После ввода кода устройство (этот Telegram аккаунт + телефон) будет работать всегда.
+                </div>
+              )}
             </div>
 
             {error && (
@@ -254,19 +276,19 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
               <div className="space-y-1.5">
                 <div className="flex gap-2">
                   <span className="font-bold text-blue-600">1.</span>
-                  <span>Вы получаете одноразовый код в Telegram-боте (например, <span className="font-mono font-bold">A7K9-M2P4</span>).</span>
+                  <span>Админ генерирует код в боте @Vektor_smeta_bot (только админ — ID 6567941949).</span>
                 </div>
                 <div className="flex gap-2">
                   <span className="font-bold text-blue-600">2.</span>
-                  <span>Вводите его один раз на этом устройстве.</span>
+                  <span>Вы вводите его один раз на этом устройстве (в Telegram Mini App или в браузере).</span>
                 </div>
                 <div className="flex gap-2">
                   <span className="font-bold text-blue-600">3.</span>
-                  <span>Код сгорает и больше не действителен, но это устройство привязывается и работает вечно без повторного ввода.</span>
+                  <span>Код сгорает, устройство привязывается и работает вечно без повторного ввода.</span>
                 </div>
                 <div className="flex gap-2">
                   <span className="font-bold text-blue-600">4.</span>
-                  <span>Второе устройство по тому же коду войти не сможет — защита от копирования.</span>
+                  <span>Второе устройство по тому же коду войти не сможет.</span>
                 </div>
               </div>
             </div>
@@ -274,7 +296,7 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
         </div>
 
         <div className="text-center mt-6 text-2xs text-blue-200/50">
-          ИП Сергеева М.В. • Система защищённого доступа v2 • {new Date().getFullYear()}
+          ИП Сергеева М.В. • Telegram Mini App • {new Date().getFullYear()}
         </div>
       </div>
     </div>

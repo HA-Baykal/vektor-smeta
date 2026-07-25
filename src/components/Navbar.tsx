@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { Snowflake, Info, PlusCircle, Sparkles, BookOpen } from "lucide-react";
+import { Snowflake, PlusCircle, BookOpen, Smartphone } from "lucide-react";
+import { useTelegram } from "./TelegramProvider";
 
 interface NavbarProps {
   onOpenTariffs: () => void;
@@ -9,6 +10,8 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ onOpenTariffs, onResetNew }) => {
+  const { isInTelegram, user, isAdmin } = useTelegram();
+
   return (
     <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md text-white border-b border-slate-800 shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -23,9 +26,22 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenTariffs, onResetNew }) => 
               <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-blue-500/20 text-blue-300 border border-blue-400/30">
                 ИИ-Ассистент
               </span>
+              {isInTelegram && (
+                <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-sky-500/20 text-sky-300 border border-sky-400/30 flex items-center gap-1">
+                  <Smartphone className="w-3 h-3" />
+                  Telegram Mini App
+                </span>
+              )}
+              {isAdmin && (
+                <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-amber-500/20 text-amber-300 border border-amber-400/30">
+                  Админ
+                </span>
+              )}
             </div>
             <p className="text-2xs text-slate-400 hidden sm:block">
-              Составление смет на монтаж кондиционеров с выгрузкой в Excel (.xlsx) и PDF
+              {isInTelegram && user
+                ? `Привет, ${user.first_name}! Составление смет в Telegram`
+                : "Составление смет на монтаж кондиционеров с выгрузкой в Excel (.xlsx) и PDF"}
             </p>
           </div>
         </div>

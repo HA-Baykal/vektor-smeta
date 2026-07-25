@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useTelegram } from "./TelegramProvider";
 import {
   KeyRound,
   ShieldCheck,
@@ -37,6 +38,7 @@ interface AccessCodeItem {
 }
 
 export const AdminPanel: React.FC = () => {
+  const { isInTelegram, isAdmin, user } = useTelegram();
   const [codes, setCodes] = useState<AccessCodeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -170,24 +172,44 @@ export const AdminPanel: React.FC = () => {
           </button>
         </div>
 
-        {/* Generate Bar */}
-        <div className="flex flex-col sm:flex-row gap-2 mb-6 p-4 bg-slate-50 rounded-xl border border-slate-200">
-          <input
-            type="text"
-            value={newNote}
-            onChange={(e) => setNewNote(e.target.value)}
-            placeholder="Заметка к коду (например: для клиента Иван Петров)"
-            className="flex-1 px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
-          />
-          <button
-            onClick={handleGenerate}
-            disabled={isGenerating}
-            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl font-bold text-xs flex items-center gap-2 shadow-xs transition cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            {isGenerating ? "Генерация..." : "Сгенерировать код"}
-          </button>
-        </div>
+        {/* Admin check for Mini App */}
+        {isInTelegram && (
+          <div className="mb-4 p-3 bg-sky-50 border border-sky-200 rounded-xl flex items-center gap-2 text-xs">
+            <span className="font-bold text-sky-900">Telegram Mini App:</span>
+            <span className="text-sky-800">
+              {user ? `Вы вошли как ${user.first_name} (@${user.username || "no username"}) ID: ${user.id}` : "Не в Telegram"} {isAdmin ? "— права администратора ✅ (можете генерировать коды)" : "— обычный пользователь (коды генерирует только админ)"}
+            </span>
+          </div>
+        )}
+
+        {/* Generate Bar - Admin only */}
+        {isAdmin || !isInTelegram ? (
+          <div className="flex flex-col sm:flex-row gap-2 mb-6 p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <input
+              type="text"
+              value={newNote}
+              onChange={(e) => setNewNote(e.target.value)}
+              placeholder="Заметка к коду (например: для клиента Иван Петров)"
+              className="flex-1 px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
+            />
+            <button
+              onClick={handleGenerate}
+              disabled={isGenerating}
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl font-bold text-xs flex items-center gap-2 shadow-xs transition cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              {isGenerating ? "Генерация..." : "Сгенерировать код (только админ)"}
+            </button>
+          </div>
+        ) : (
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
+            <div>
+              <div className="font-bold">Только администратор может генерировать коды.</div>
+              <div>Вы — обычный пользователь. Попросите код у администратора в Telegram-боте @Vektor_smeta_bot. После получения кода введите его на экране входа — ваше устройство привяжется навсегда.</div>
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <div className="py-8 text-center text-slate-400 text-sm">Загрузка кодов...</div>

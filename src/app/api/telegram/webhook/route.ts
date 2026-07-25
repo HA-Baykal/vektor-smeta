@@ -6,6 +6,8 @@ function getBotToken() {
   return process.env.TELEGRAM_BOT_TOKEN || "";
 }
 
+const WEB_APP_URL = process.env.TELEGRAM_WEB_APP_URL || "https://vektor-smeta-app.vercel.app";
+
 async function sendTelegramMessage(
   botToken: string,
   chatId: string | number,
@@ -58,7 +60,6 @@ async function createCodeInDB(
   note?: string
 ) {
   if (!process.env.DATABASE_URL) {
-    // Mock code if no DB
     return { code: generateAccessCode() };
   }
   const { db } = await import("@/db");
@@ -79,6 +80,42 @@ async function createCodeInDB(
   return inserted[0];
 }
 
+function getMainKeyboard(isAdmin: boolean) {
+  if (isAdmin) {
+    return {
+      inline_keyboard: [
+        [
+          {
+            text: "❄️ Открыть Сметчик (Mini App)",
+            web_app: { url: WEB_APP_URL },
+          },
+        ],
+        [
+          { text: "🔑 Сгенерировать код", callback_data: "gen_code" },
+          { text: "📋 Список кодов", callback_data: "list_codes" },
+        ],
+        [
+          { text: "📊 Статистика", callback_data: "stats" },
+        ],
+      ],
+    };
+  } else {
+    return {
+      inline_keyboard: [
+        [
+          {
+            text: "❄️ Открыть Сметчик (Mini App)",
+            web_app: { url: WEB_APP_URL },
+          },
+        ],
+        [
+          { text: "ℹ️ Как получить доступ?", callback_data: "how_to_access" },
+        ],
+      ],
+    };
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -94,15 +131,16 @@ export async function POST(req: NextRequest) {
     if (callbackQuery) {
       const chatId = callbackQuery.message?.chat?.id;
       const userId = callbackQuery.from?.id;
+      const username = callbackQuery.from?.username;
       const data = callbackQuery.data;
-
-      if (!isAdminTelegramUser(userId)) {
-        await sendTelegramMessage(token, chatId, "⛔ У вас нет прав на генерацию кодов.");
-        return NextResponse.json({ ok: true });
-      }
+      const isAdmin = isAdminTelegramUser(userId);
 
       if (data === "gen_code" || data === "gen") {
-        const code = await createCodeInDB(userId, callbackQuery.from?.username);
+        if (!isAdmin) {
+          await sendTelegramMessage(token, chatId, "⛔ Только администратор может генерировать коды доступа. Обратитесь к владельцу бота.");
+          return NextResponse.json({ ok: true });
+        }
+        const code = await createCodeInDB(userId, username);
         await sendTelegramMessage(
           token,
           chatId,
@@ -110,13 +148,79 @@ export async function POST(req: NextRequest) {
             `• Одноразовый: после ввода на устройстве сгорит\n` +
             `• Привязка: работает всегда только на том устройстве, где введен\n` +
             `• Действует: 7 дней до активации\n\n` +
-            `Отправьте этот код клиенту.`,
+            `Отправьте этот код клиенту. Клиент вводит его в Mini App и получает доступ.`,
           {
-            reply_markup: {
-              inline_keyboard: [
-                [{ text: "➕ Сгенерировать ещё один", callback_data: "gen_code" }],
-              ],
-            },
+            reply_markup: getMainKeyboard(isAdmin),
+          }
+        );
+      } else if (data === "list_codes") {
+        if (!isAdmin) {
+          await sendTelegramMessage(token, chatId, "⛔ Только для администратора.");
+          return NextResponse.json({ ok: true });
+        }
+        if (!process.env.DATABASE_URL) {
+          await sendTelegramMessage(token, chatId, "DATABASE_URL не настроен");
+          return NextResponse.json({ ok: true });
+        }
+        const { db } = await import("@/db");
+        const { accessCodes } = await import("@/db/schema");
+        const { desc } = await import("drizzle-orm");
+        const list = await db.select().from(accessCodes).orderBy(desc(accessCodes.createdAt)).limit(10);
+        if (list.length === 0) {
+          await sendTelegramMessage(token, chatId, "Список кодов пуст. Сгенерируйте первый командой /gen", {
+            reply_markup: getMainKeyboard(isAdmin),
+          });
+        } else {
+          let msg = `📋 <b>Последние 10 кодов:</b>\n\n`;
+          list.forEach((c, idx) => {
+            const status = c.isUsed ? `✅ использован (${c.deviceFingerprint?.slice(0, 10)}...)` : `🟡 активен`;
+            msg += `${idx + 1}. <code>${c.code}</code> — ${status}\n`;
+          });
+          await sendTelegramMessage(token, chatId, msg, {
+            reply_markup: getMainKeyboard(isAdmin),
+          });
+        }
+      } else if (data === "how_to_access") {
+        await sendTelegramMessage(
+          token,
+          chatId,
+          `🔐 <b>Как получить доступ к Сметчику?</b>\n\n` +
+            `1. Попросите администратора сгенерировать для вас одноразовый код\n` +
+            `2. Нажмите кнопку «Открыть Сметчик» ниже\n` +
+            `3. Введите код в приложении\n` +
+            `4. Ваше устройство привяжется и будет работать всегда без повторного ввода\n\n` +
+            `Код одноразовый и сгорает после первого использования!`,
+          {
+            reply_markup: getMainKeyboard(isAdmin),
+          }
+        );
+      } else if (data === "stats") {
+        if (!isAdmin) {
+          await sendTelegramMessage(token, chatId, "⛔ Только для администратора.");
+          return NextResponse.json({ ok: true });
+        }
+        if (!process.env.DATABASE_URL) {
+          await sendTelegramMessage(token, chatId, "DATABASE_URL не настроен");
+          return NextResponse.json({ ok: true });
+        }
+        const { db } = await import("@/db");
+        const { accessCodes, estimates } = await import("@/db/schema");
+        const { count } = await import("drizzle-orm");
+        
+        const totalCodes = await db.select({ count: count() }).from(accessCodes);
+        const usedCodes = await db.select({ count: count() }).from(accessCodes).where((await import("drizzle-orm")).eq(accessCodes.isUsed, true));
+        const totalEstimates = await db.select({ count: count() }).from(estimates);
+
+        await sendTelegramMessage(
+          token,
+          chatId,
+          `📊 <b>Статистика Сметчика:</b>\n\n` +
+            `🔑 Всего кодов: ${totalCodes[0]?.count || 0}\n` +
+            `✅ Использовано: ${usedCodes[0]?.count || 0}\n` +
+            `📝 Смет создано: ${totalEstimates[0]?.count || 0}\n` +
+            `🌐 Mini App: ${WEB_APP_URL}`,
+          {
+            reply_markup: getMainKeyboard(isAdmin),
           }
         );
       }
@@ -140,55 +244,82 @@ export async function POST(req: NextRequest) {
     const userId = message.from?.id;
     const username = message.from?.username;
     const text = (message.text || "").trim();
+    const isAdmin = isAdminTelegramUser(userId);
 
     if (!chatId || !userId) {
       return NextResponse.json({ ok: true });
     }
 
     if (text === "/start") {
-      const welcome =
-        `❄️ <b>ИИ-Ассистент «Сметчик» — Бот управления доступом</b>\n\n` +
-        `Этот бот генерирует одноразовые коды для входа в приложение сметчика кондиционеров.\n\n` +
-        `<b>Как работает защита:</b>\n` +
-        `1. Вы генерируете код командой /gen\n` +
-        `2. Отправляете код клиенту/сотруднику\n` +
-        `3. Код вводится 1 раз в приложении → устройство привязывается\n` +
-        `4. После этого устройство работает вечно без кода, а сам код сгорает\n\n` +
-        `<b>Команды:</b>\n` +
-        `/gen — сгенерировать новый одноразовый код\n` +
-        `/list — список последних кодов\n` +
-        `/help — помощь\n\n` +
-        (isAdminTelegramUser(userId)
-          ? `✅ Ваш ID <code>${userId}</code> — права администратора подтверждены.`
-          : `⚠️ Ваш ID <code>${userId}</code> — для ограничения доступа укажите TELEGRAM_ADMIN_IDS в .env`);
+      if (isAdmin) {
+        const welcome =
+          `❄️ <b>ИИ-Ассистент «Сметчик» — Telegram Mini App</b>\n\n` +
+          `Добро пожаловать, Администратор! Вы можете генерировать одноразовые коды доступа.\n\n` +
+          `<b>Как работает система:</b>\n` +
+          `1. Вы генерируете код кнопкой ниже или командой /gen\n` +
+          `2. Отправляете код клиенту/сотруднику\n` +
+          `3. Клиент открывает Mini App (кнопка ниже) и вводит код 1 раз\n` +
+          `4. Устройство клиента привязывается и работает вечно без кода, а код сгорает\n\n` +
+          `<b>Ваш ID:</b> <code>${userId}</code> — права администратора ✅\n\n` +
+          `Нажмите «Открыть Сметчик» чтобы запустить приложение прямо в Telegram!`;
 
-      await sendTelegramMessage(token, chatId, welcome, {
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: "🔑 Сгенерировать код", callback_data: "gen_code" }],
-          ],
-        },
-      });
+        await sendTelegramMessage(token, chatId, welcome, {
+          reply_markup: getMainKeyboard(true),
+        });
+      } else {
+        const welcome =
+          `❄️ <b>Сметчик — монтаж кондиционеров</b>\n\n` +
+          `Добро пожаловать! Это Telegram Mini App для составления смет.\n\n` +
+          `🔐 <b>Доступ по одноразовому коду:</b>\n` +
+          `Чтобы пользоваться приложением, попросите у администратора код доступа.\n\n` +
+          `После ввода код сгорает, а ваше устройство привязывается навсегда.\n\n` +
+          `Нажмите кнопку ниже чтобы открыть приложение!`;
+
+        await sendTelegramMessage(token, chatId, welcome, {
+          reply_markup: getMainKeyboard(false),
+        });
+      }
       return NextResponse.json({ ok: true });
     }
 
     if (text === "/help") {
-      await sendTelegramMessage(
-        token,
-        chatId,
-        `🆘 <b>Помощь по боту Сметчик:</b>\n\n` +
-          `/gen — Генерация 1 кода\n` +
-          `/gen 5 — Генерация 5 кодов сразу\n` +
-          `/list — Последние 10 кодов\n` +
-          `/revoke XXXX-XXXX — Отозвать/удалить код\n` +
-          `/start — Главное меню\n`
-      );
+      if (isAdmin) {
+        await sendTelegramMessage(
+          token,
+          chatId,
+          `🆘 <b>Помощь — Админ:</b>\n\n` +
+            `/start — главное меню + Mini App\n` +
+            `/gen — 1 новый код\n` +
+            `/gen 5 — 5 кодов сразу\n` +
+            `/list — последние 10 кодов\n` +
+            `/stats — статистика\n` +
+            `/revoke XXXX-XXXX — удалить код\n\n` +
+            `<b>Mini App:</b> ${WEB_APP_URL}`,
+          {
+            reply_markup: getMainKeyboard(true),
+          }
+        );
+      } else {
+        await sendTelegramMessage(
+          token,
+          chatId,
+          `🆘 <b>Помощь:</b>\n\n` +
+            `Это приложение работает по одноразовым кодам.\n` +
+            `Попросите код у администратора и введите его в Mini App.\n\n` +
+            `После первого ввода устройство будет работать всегда.`,
+          {
+            reply_markup: getMainKeyboard(false),
+          }
+        );
+      }
       return NextResponse.json({ ok: true });
     }
 
     if (text.startsWith("/gen") || text.startsWith("/code")) {
-      if (!isAdminTelegramUser(userId)) {
-        await sendTelegramMessage(token, chatId, "⛔ Нет прав на генерацию кодов.");
+      if (!isAdmin) {
+        await sendTelegramMessage(token, chatId, "⛔ Только администратор может генерировать коды. Попросите код у владельца бота.", {
+          reply_markup: getMainKeyboard(false),
+        });
         return NextResponse.json({ ok: true });
       }
 
@@ -207,25 +338,24 @@ export async function POST(req: NextRequest) {
         token,
         chatId,
         `✅ Сгенерировано кодов: <b>${count}</b>\n\n${codesText}\n\n` +
-          `Каждый код одноразовый, привязывается к устройству при первом вводе и затем сгорает. Устройство будет работать вечно.`,
+          `Каждый код одноразовый, привязывается к устройству при первом вводе и затем сгорает.\n` +
+          `Клиенты могут ввести его в Mini App.`,
         {
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: "➕ Ещё один код", callback_data: "gen_code" }],
-            ],
-          },
+          reply_markup: getMainKeyboard(true),
         }
       );
       return NextResponse.json({ ok: true });
     }
 
     if (text.startsWith("/list")) {
-      if (!isAdminTelegramUser(userId)) {
-        await sendTelegramMessage(token, chatId, "⛔ Нет прав.");
+      if (!isAdmin) {
+        await sendTelegramMessage(token, chatId, "⛔ Только для администратора.", {
+          reply_markup: getMainKeyboard(false),
+        });
         return NextResponse.json({ ok: true });
       }
       if (!process.env.DATABASE_URL) {
-        await sendTelegramMessage(token, chatId, "DATABASE_URL не настроен — база не подключена");
+        await sendTelegramMessage(token, chatId, "DATABASE_URL не настроен");
         return NextResponse.json({ ok: true });
       }
       const { db } = await import("@/db");
@@ -233,21 +363,27 @@ export async function POST(req: NextRequest) {
       const { desc } = await import("drizzle-orm");
       const list = await db.select().from(accessCodes).orderBy(desc(accessCodes.createdAt)).limit(10);
       if (list.length === 0) {
-        await sendTelegramMessage(token, chatId, "Список кодов пуст. Сгенерируйте первый командой /gen");
+        await sendTelegramMessage(token, chatId, "Список кодов пуст. Сгенерируйте первый командой /gen", {
+          reply_markup: getMainKeyboard(true),
+        });
       } else {
         let msg = `📋 <b>Последние 10 кодов:</b>\n\n`;
         list.forEach((c, idx) => {
           const status = c.isUsed ? `✅ использован (${c.deviceFingerprint?.slice(0, 10)}...)` : `🟡 активен`;
           msg += `${idx + 1}. <code>${c.code}</code> — ${status}\n`;
         });
-        await sendTelegramMessage(token, chatId, msg);
+        await sendTelegramMessage(token, chatId, msg, {
+          reply_markup: getMainKeyboard(true),
+        });
       }
       return NextResponse.json({ ok: true });
     }
 
     if (text.startsWith("/revoke") || text.startsWith("/delete")) {
-      if (!isAdminTelegramUser(userId)) {
-        await sendTelegramMessage(token, chatId, "⛔ Нет прав.");
+      if (!isAdmin) {
+        await sendTelegramMessage(token, chatId, "⛔ Только для администратора.", {
+          reply_markup: getMainKeyboard(false),
+        });
         return NextResponse.json({ ok: true });
       }
       if (!process.env.DATABASE_URL) {
@@ -264,18 +400,18 @@ export async function POST(req: NextRequest) {
       const { accessCodes } = await import("@/db/schema");
       const { eq } = await import("drizzle-orm");
       await db.delete(accessCodes).where(eq(accessCodes.code, codeToRevoke));
-      await sendTelegramMessage(token, chatId, `🗑 Код <code>${codeToRevoke}</code> удалён/отозван.`);
+      await sendTelegramMessage(token, chatId, `🗑 Код <code>${codeToRevoke}</code> удалён/отозван.`, {
+        reply_markup: getMainKeyboard(true),
+      });
       return NextResponse.json({ ok: true });
     }
 
     await sendTelegramMessage(
       token,
       chatId,
-      `Неизвестная команда. Используйте /gen для генерации кода или /help для справки.`,
+      `Неизвестная команда. Используйте /start для открытия Mini App.`,
       {
-        reply_markup: {
-          inline_keyboard: [[{ text: "🔑 Сгенерировать код", callback_data: "gen_code" }]],
-        },
+        reply_markup: getMainKeyboard(isAdmin),
       }
     );
 
@@ -289,7 +425,8 @@ export async function POST(req: NextRequest) {
 export async function GET() {
   return NextResponse.json({
     ok: true,
-    message: "Telegram webhook endpoint. Use POST from Telegram.",
-    setup: "Установите TELEGRAM_BOT_TOKEN в .env и настройте вебхук: https://api.telegram.org/bot<TOKEN>/setWebhook?url=<YOUR_DOMAIN>/api/telegram/webhook",
+    message: "Telegram Mini App webhook endpoint",
+    webAppUrl: WEB_APP_URL,
+    setup: "Установите TELEGRAM_BOT_TOKEN и настройте вебхук",
   });
 }

@@ -8,6 +8,7 @@ import { ChatAssistant } from "@/components/ChatAssistant";
 import { EstimateHistory } from "@/components/EstimateHistory";
 import { ContractGenerator } from "@/components/ContractGenerator";
 import { AuthGuard } from "@/components/AuthGuard";
+import { TelegramProvider, useTelegram } from "@/components/TelegramProvider";
 import { AdminPanel } from "@/components/AdminPanel";
 import { PrintPdfModal } from "@/components/PrintPdfModal";
 import { TariffRulesModal } from "@/components/TariffRulesModal";
@@ -25,6 +26,7 @@ import {
 } from "lucide-react";
 
 function MainApp() {
+  const { isAdmin, isInTelegram } = useTelegram();
   const [activeTab, setActiveTab] = useState<
     "builder" | "contract" | "chat" | "history" | "admin"
   >("builder");
@@ -260,8 +262,10 @@ function MainApp() {
 
 export default function HomePage() {
   return (
-    <AuthGuard>
-      <MainApp />
-    </AuthGuard>
+    <TelegramProvider>
+      <AuthGuard>
+        <MainApp />
+      </AuthGuard>
+    </TelegramProvider>
   );
 }
