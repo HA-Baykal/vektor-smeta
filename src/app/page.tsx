@@ -36,19 +36,19 @@ function MainApp() {
   const [isSavingDb, setIsSavingDb] = useState(false);
 
   const [inputs, setInputs] = useState<EstimateInputs>({
-    modelName: SAMPLE_AIR_CONDITIONERS[0].model,
-    equipmentPrice: SAMPLE_AIR_CONDITIONERS[0].price,
-    equipmentBrand: SAMPLE_AIR_CONDITIONERS[0].brand,
-    equipmentType: SAMPLE_AIR_CONDITIONERS[0].type,
-    equipmentUrl: SAMPLE_AIR_CONDITIONERS[0].url,
+    modelName: "",
+    equipmentPrice: 0,
+    equipmentBrand: "",
+    equipmentType: "Сплит-система",
+    equipmentUrl: "",
     traceLength: 4,
     complexity: "standard",
     complexityHours: 0,
     hasCableChannel: false,
     cableChannelMeters: 0,
-    clientName: "Иван Сергеев",
-    clientPhone: "+7 (999) 450-20-10",
-    clientAddress: "г. Москва, ул. Ленина, д. 42",
+    clientName: "",
+    clientPhone: "",
+    clientAddress: "",
     installationDate: new Date().toISOString().split("T")[0],
     discountType: "none",
     discountValue: 0,
@@ -59,9 +59,9 @@ function MainApp() {
 
   const handleResetNew = () => {
     setInputs({
-      modelName: "Ballu Eco Pro BSPI-09HN1/EP/24Y",
-      equipmentPrice: 34500,
-      equipmentBrand: "Ballu",
+      modelName: "",
+      equipmentPrice: 0,
+      equipmentBrand: "",
       equipmentType: "Сплит-система",
       equipmentUrl: "",
       traceLength: 4,
