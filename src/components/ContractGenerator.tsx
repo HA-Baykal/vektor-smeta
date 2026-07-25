@@ -560,9 +560,29 @@ export const ContractGenerator: React.FC<ContractGeneratorProps> = ({
                     <td className="border border-slate-300 p-1 text-right font-mono font-bold">{formatRuble(it.total)}</td>
                   </tr>
                 ))}
+                <tr className="bg-slate-50">
+                  <td colSpan={5} className="border border-slate-300 p-1 text-right">Подитог без скидок:</td>
+                  <td className="border border-slate-300 p-1 text-right font-mono">{formatRuble(calculation.subtotal)}</td>
+                </tr>
+                {calculation.discountAmount > 0 && (
+                  <tr className="bg-rose-50">
+                    <td colSpan={5} className="border border-slate-300 p-1 text-right font-bold text-rose-800">
+                      Скидка {inputs.discountType === "percent" ? `(${inputs.discountValue}%)` : ""}:
+                    </td>
+                    <td className="border border-slate-300 p-1 text-right font-mono font-bold text-rose-700">-{formatRuble(calculation.discountAmount)}</td>
+                  </tr>
+                )}
+                {calculation.vatAmount > 0 && (
+                  <tr className="bg-slate-100">
+                    <td colSpan={5} className="border border-slate-300 p-1 text-right font-bold">
+                      {inputs.vatType === "vat6" ? "НДС 6%:" : "НДС:"}
+                    </td>
+                    <td className="border border-slate-300 p-1 text-right font-mono font-bold">+{formatRuble(calculation.vatAmount)}</td>
+                  </tr>
+                )}
                 <tr className="bg-slate-100 font-bold">
-                  <td colSpan={5} className="border border-slate-300 p-1 text-right">ИТОГО:</td>
-                  <td className="border border-slate-300 p-1 text-right font-mono">{formatRuble(calculation.finalTotal)}</td>
+                  <td colSpan={5} className="border border-slate-300 p-1 text-right">ИТОГО К ОПЛАТЕ ПО ДОГОВОРУ:</td>
+                  <td className="border border-slate-300 p-1 text-right font-mono text-blue-900">{formatRuble(calculation.finalTotal)}</td>
                 </tr>
                 <tr className="bg-amber-50">
                   <td colSpan={5} className="border border-slate-300 p-1 text-right font-bold">Предоплата (оборудование + расходники):</td>
