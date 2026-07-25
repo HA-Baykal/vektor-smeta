@@ -121,7 +121,6 @@ export function openPrintableInNewTab(elementId: string, fileName: string = "doc
   }
 
   try {
-    // Use Blob URL to avoid popup blocker issues
     const styles = Array.from(document.querySelectorAll('style'))
       .map((el) => el.outerHTML)
       .join("\n");
@@ -135,57 +134,55 @@ export function openPrintableInNewTab(elementId: string, fileName: string = "doc
           <title>${fileName}</title>
           ${styles}
           <style>
-            body { font-family: Arial, sans-serif; padding: 20px; background: white; color: black; max-width: 900px; margin: 0 auto; }
-            .no-print { display: block; }
+            body { font-family: Arial, sans-serif; padding: 16px; background: white; color: black; max-width: 900px; margin: 0 auto; font-size: 14px; line-height: 1.4; }
             table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-            th, td { border: 1px solid #ddd; padding: 8px; }
+            th, td { border: 1px solid #ddd; padding: 6px 8px; }
+            .no-print { display: flex; }
             @media print {
               .no-print { display: none !important; }
+              body { padding: 10px; }
             }
           </style>
         </head>
         <body>
-          <div class="no-print" style="margin-bottom: 20px; padding: 15px; background: #f1f5f9; border-radius: 12px; display: flex; gap: 10px; flex-wrap: wrap;">
-            <button onclick="window.print()" style="padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px;">
-              🖨️ Распечатать / Сохранить как PDF
+          <div class="no-print" style="margin-bottom: 20px; padding: 12px; background: #f1f5f9; border-radius: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+            <button onclick="window.print()" style="padding: 10px 16px; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px;">
+              🖨️ Печать / PDF
             </button>
-            <button onclick="window.close()" style="padding: 10px 20px; background: #64748b; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">
-              Закрыть
+            <button onclick="window.close()" style="padding: 10px 16px; background: #64748b; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">
+              ✕ Закрыть
             </button>
-            <span style="font-size: 12px; color: #64748b; align-self: center;">💡 В диалоге печати выберите "Сохранить как PDF"</span>
+            <span style="font-size: 11px; color: #64748b;">💡 Выберите "Сохранить как PDF" в диалоге печати</span>
           </div>
           ${element.innerHTML}
         </body>
       </html>
     `;
 
-    const blob = new Blob([htmlContent], { type: "text/html" });
-    const blobUrl = URL.createObjectURL(blob);
-    
-    // Try to open via window.open with blob URL - less likely to be blocked as it's same-origin
-    const newWindow = window.open(blobUrl, "_blank");
-    
-    if (!newWindow) {
-      // If blocked, try to create a temporary link and click it
+    // Method 1: Try window.open with about:blank and write directly (most compatible, less likely to be blocked when called from click)
+    const newWindow = window.open("", "_blank");
+    if (newWindow) {
+      newWindow.document.open();
+      newWindow.document.write(htmlContent);
+      newWindow.document.close();
+      newWindow.focus();
+    } else {
+      // Method 2: Fallback to Blob URL with anchor click
+      const blob = new Blob([htmlContent], { type: "text/html" });
+      const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = blobUrl;
       link.target = "_blank";
       link.rel = "noopener";
+      link.style.display = "none";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
-      // Clean up blob URL after some time
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
-    } else {
-      // Clean up blob URL after load
-      newWindow.addEventListener('load', () => {
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
-      });
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
     }
   } catch (error) {
     console.error("Failed to open in new tab:", error);
-    // Fallback to iframe print
+    // Last resort: try iframe print
     printElementById(elementId, fileName);
   }
 }
