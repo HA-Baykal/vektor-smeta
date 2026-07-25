@@ -8,7 +8,8 @@ import { ChatAssistant } from "@/components/ChatAssistant";
 import { EstimateHistory } from "@/components/EstimateHistory";
 import { ContractGenerator } from "@/components/ContractGenerator";
 import { AuthGuard } from "@/components/AuthGuard";
-import { TelegramProvider } from "@/components/TelegramProvider";
+import { TelegramProvider, useTelegram } from "@/components/TelegramProvider";
+import { AuditLogViewer } from "@/components/AuditLogViewer";
 import { PrintPdfModal } from "@/components/PrintPdfModal";
 import { TariffRulesModal } from "@/components/TariffRulesModal";
 import {
@@ -24,6 +25,7 @@ import {
 } from "lucide-react";
 
 function MainApp() {
+  const { isAdmin } = useTelegram();
   const [activeTab, setActiveTab] = useState<
     "builder" | "contract" | "chat" | "history"
   >("builder");
@@ -285,6 +287,7 @@ function MainApp() {
             inputs={inputs}
             calculation={calculation}
             onChangeInputs={setInputs}
+            onSaveToDatabase={handleSaveToDatabase}
           />
         )}
 
@@ -312,12 +315,19 @@ function MainApp() {
         )}
 
         {activeTab === "history" && (
-          <EstimateHistory
-            onLoadEstimate={(loaded) => {
-              setInputs(loaded);
-              setActiveTab("builder");
-            }}
-          />
+          <div className="space-y-8">
+            <EstimateHistory
+              onLoadEstimate={(loaded) => {
+                setInputs(loaded);
+                setActiveTab("builder");
+              }}
+            />
+            {isAdmin && (
+              <div className="border-t border-slate-200 pt-8">
+                <AuditLogViewer />
+              </div>
+            )}
+          </div>
         )}
       </main>
 
@@ -327,6 +337,7 @@ function MainApp() {
         calculation={calculation}
         onClose={() => setIsPdfOpen(false)}
         onDownloadExcel={handleDownloadExcel}
+        onSaveToDatabase={handleSaveToDatabase}
       />
 
       <TariffRulesModal isOpen={isTariffsOpen} onClose={() => setIsTariffsOpen(false)} />

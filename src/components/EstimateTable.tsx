@@ -52,6 +52,13 @@ export const EstimateTable: React.FC<EstimateTableProps> = ({
       if (type === "docx") setIsExportingDocx(true);
       if (type === "pdf") setIsExportingPdf(true);
 
+      // Auto-save to DB before export
+      try {
+        await onSaveToDatabase();
+      } catch (e) {
+        console.log("Auto-save failed, continue with export", e);
+      }
+
       // For PDF on mobile, try client-side canvas method first for Cyrillic support
       if (type === "pdf") {
         const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);

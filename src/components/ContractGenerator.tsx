@@ -20,12 +20,14 @@ interface ContractGeneratorProps {
   inputs: EstimateInputs;
   calculation: EstimateCalculationResult;
   onChangeInputs: (updated: EstimateInputs) => void;
+  onSaveToDatabase?: () => Promise<void>;
 }
 
 export const ContractGenerator: React.FC<ContractGeneratorProps> = ({
   inputs,
   calculation,
   onChangeInputs,
+  onSaveToDatabase,
 }) => {
   // Contract meta - editable, customer fields empty by default as requested
   const [contractNumber, setContractNumber] = useState("67");
@@ -82,11 +84,30 @@ export const ContractGenerator: React.FC<ContractGeneratorProps> = ({
     }
   };
 
-  const handlePrintContract = () => {
+  const autoSave = async () => {
+    try {
+      if (onSaveToDatabase) {
+        await onSaveToDatabase();
+      } else {
+        // Fallback direct save
+        await fetch("/api/estimates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(inputs),
+        });
+      }
+    } catch (e) {
+      console.error("Auto-save failed:", e);
+    }
+  };
+
+  const handlePrintContract = async () => {
+    await autoSave();
     printElementById("printable-contract", `Договор_${contractNumber}_${customerName || "заказчик"}`);
   };
 
-  const handleOpenContractInNewTab = () => {
+  const handleOpenContractInNewTab = async () => {
+    await autoSave();
     openPrintableInNewTab("printable-contract", `Договор_${contractNumber}_${customerName || "заказчик"}`);
   };
 
@@ -99,6 +120,9 @@ export const ContractGenerator: React.FC<ContractGeneratorProps> = ({
 
   const handleExportContract = async (type: "docx" | "pdf") => {
     try {
+      // Auto-save to DB before export
+      await autoSave();
+
       // For PDF, try client-side canvas first (better for mobile Cyrillic), fallback to server
       if (type === "pdf") {
         const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);

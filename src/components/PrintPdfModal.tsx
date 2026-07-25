@@ -11,6 +11,7 @@ interface PrintPdfModalProps {
   isOpen: boolean;
   onClose: () => void;
   onDownloadExcel: () => void;
+  onSaveToDatabase?: () => Promise<void>;
 }
 
 export const PrintPdfModal: React.FC<PrintPdfModalProps> = ({
@@ -19,6 +20,7 @@ export const PrintPdfModal: React.FC<PrintPdfModalProps> = ({
   isOpen,
   onClose,
   onDownloadExcel,
+  onSaveToDatabase,
 }) => {
   if (!isOpen) return null;
 
@@ -30,11 +32,17 @@ export const PrintPdfModal: React.FC<PrintPdfModalProps> = ({
       year: "numeric",
     });
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
+    try {
+      if (onSaveToDatabase) await onSaveToDatabase();
+    } catch {}
     printElementById("printable-estimate", `Смета_${inputs.modelName || "кондиционер"}`);
   };
 
-  const handleOpenInNewTab = () => {
+  const handleOpenInNewTab = async () => {
+    try {
+      if (onSaveToDatabase) await onSaveToDatabase();
+    } catch {}
     openPrintableInNewTab("printable-estimate", `Смета_${inputs.modelName || "кондиционер"}`);
   };
 
