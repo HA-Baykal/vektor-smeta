@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { estimates } from "@/db/schema";
-import { eq } from "drizzle-orm";
-import { calculateEstimate } from "@/lib/calculator";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json({ success: false, message: "DATABASE_URL not configured" }, { status: 500 });
+    }
+    const { db } = await import("@/db");
+    const { estimates } = await import("@/db/schema");
+    const { eq } = await import("drizzle-orm");
+
     const { id } = await context.params;
     const numId = parseInt(id, 10);
     if (isNaN(numId)) {
@@ -34,6 +39,14 @@ export async function PUT(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json({ success: false, message: "DATABASE_URL not configured" }, { status: 500 });
+    }
+    const { db } = await import("@/db");
+    const { estimates } = await import("@/db/schema");
+    const { eq } = await import("drizzle-orm");
+    const { calculateEstimate } = await import("@/lib/calculator");
+
     const { id } = await context.params;
     const numId = parseInt(id, 10);
     const body = await req.json();
@@ -85,6 +98,13 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json({ success: false, message: "DATABASE_URL not configured" }, { status: 500 });
+    }
+    const { db } = await import("@/db");
+    const { estimates } = await import("@/db/schema");
+    const { eq } = await import("drizzle-orm");
+
     const { id } = await context.params;
     const numId = parseInt(id, 10);
     await db.delete(estimates).where(eq(estimates.id, numId));

@@ -1,19 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { accessCodes } from "@/db/schema";
-import { generateAccessCode } from "@/lib/auth";
-import { desc } from "drizzle-orm";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json(
+        { success: false, message: "DATABASE_URL не настроен — подключите базу в Vercel Storage" },
+        { status: 500 }
+      );
+    }
+
+    const { db } = await import("@/db");
+    const { accessCodes } = await import("@/db/schema");
+    const { generateAccessCode } = await import("@/lib/auth");
+
     const body = await req.json().catch(() => ({}));
     const note = body.note || "";
     const createdByTelegramId = body.createdByTelegramId || null;
     const createdByTelegramUsername = body.createdByTelegramUsername || null;
-    const expiresInHours = body.expiresInHours || 168; // 7 дней по умолчанию
+    const expiresInHours = body.expiresInHours || 168;
 
-    let code = generateAccessCode();
-
+    const code = generateAccessCode();
     const expiresAt = new Date(Date.now() + expiresInHours * 60 * 60 * 1000);
 
     const inserted = await db
@@ -43,6 +51,12 @@ export async function POST(req: NextRequest) {
 
 export async function GET() {
   try {
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json({ success: true, data: [] });
+    }
+    const { db } = await import("@/db");
+    const { accessCodes } = await import("@/db/schema");
+    const { desc } = await import("drizzle-orm");
     const list = await db.select().from(accessCodes).orderBy(desc(accessCodes.createdAt));
     return NextResponse.json({ success: true, data: list });
   } catch (error) {

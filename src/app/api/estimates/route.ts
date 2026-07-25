@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { estimates } from "@/db/schema";
-import { desc, eq } from "drizzle-orm";
-import { calculateEstimate } from "@/lib/calculator";
+
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json({ success: true, data: [] });
+    }
+    const { db } = await import("@/db");
+    const { estimates } = await import("@/db/schema");
+    const { desc } = await import("drizzle-orm");
     const list = await db.select().from(estimates).orderBy(desc(estimates.createdAt));
     return NextResponse.json({ success: true, data: list });
   } catch (error) {
@@ -18,6 +22,16 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json(
+        { success: false, message: "DATABASE_URL не настроен" },
+        { status: 500 }
+      );
+    }
+    const { db } = await import("@/db");
+    const { estimates } = await import("@/db/schema");
+    const { calculateEstimate } = await import("@/lib/calculator");
+
     const body = await req.json();
 
     const calc = calculateEstimate(body);

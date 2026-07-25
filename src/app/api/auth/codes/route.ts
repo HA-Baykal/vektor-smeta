@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { accessCodes } from "@/db/schema";
-import { desc, eq } from "drizzle-orm";
+
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json({ success: true, data: [] });
+    }
+    const { db } = await import("@/db");
+    const { accessCodes } = await import("@/db/schema");
+    const { desc } = await import("drizzle-orm");
     const list = await db.select().from(accessCodes).orderBy(desc(accessCodes.createdAt)).limit(100);
     return NextResponse.json({ success: true, data: list });
   } catch (error) {
@@ -17,6 +22,12 @@ export async function GET() {
 
 export async function DELETE(req: NextRequest) {
   try {
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json({ success: false, message: "DATABASE_URL not configured" }, { status: 500 });
+    }
+    const { db } = await import("@/db");
+    const { accessCodes } = await import("@/db/schema");
+    const { eq } = await import("drizzle-orm");
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
     const code = searchParams.get("code");

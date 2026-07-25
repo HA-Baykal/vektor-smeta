@@ -1,12 +1,82 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { accessCodes } from "@/db/schema";
-import { generateAccessCode, isAdminTelegramUser, sendTelegramMessage } from "@/lib/auth";
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+export const dynamic = "force-dynamic";
 
 function getBotToken() {
-  return process.env.TELEGRAM_BOT_TOKEN || BOT_TOKEN || "";
+  return process.env.TELEGRAM_BOT_TOKEN || "";
+}
+
+async function sendTelegramMessage(
+  botToken: string,
+  chatId: string | number,
+  text: string,
+  options?: { parse_mode?: string; reply_markup?: any }
+) {
+  try {
+    const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        parse_mode: options?.parse_mode || "HTML",
+        reply_markup: options?.reply_markup,
+      }),
+    });
+    return await res.json();
+  } catch (e) {
+    console.error("Telegram send error:", e);
+    return null;
+  }
+}
+
+function isAdminTelegramUser(userId: string | number): boolean {
+  const adminIdsEnv = process.env.TELEGRAM_ADMIN_IDS || process.env.TELEGRAM_ADMIN_ID || "";
+  if (!adminIdsEnv) {
+    return true;
+  }
+  const adminIds = adminIdsEnv
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return adminIds.includes(String(userId));
+}
+
+function generateAccessCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let raw = "";
+  for (let i = 0; i < 8; i++) {
+    raw += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return `${raw.slice(0, 4)}-${raw.slice(4, 8)}`;
+}
+
+async function createCodeInDB(
+  telegramId: number | string,
+  username?: string,
+  note?: string
+) {
+  if (!process.env.DATABASE_URL) {
+    // Mock code if no DB
+    return { code: generateAccessCode() };
+  }
+  const { db } = await import("@/db");
+  const { accessCodes } = await import("@/db/schema");
+  const code = generateAccessCode();
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const inserted = await db
+    .insert(accessCodes)
+    .values({
+      code,
+      isUsed: false,
+      expiresAt,
+      createdByTelegramId: String(telegramId),
+      createdByTelegramUsername: username || null,
+      note: note || "Создано через Telegram бот",
+    })
+    .returning();
+  return inserted[0];
 }
 
 export async function POST(req: NextRequest) {
@@ -18,7 +88,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "BOT_TOKEN_MISSING" });
     }
 
-    // Telegram update может содержать message или callback_query
     const message = body.message || body.edited_message;
     const callbackQuery = body.callback_query;
 
@@ -52,7 +121,6 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Ответ на callback query
       try {
         await fetch(`https://api.telegram.org/bot${token}/answerCallbackQuery`, {
           method: "POST",
@@ -77,7 +145,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    // Команда /start
     if (text === "/start") {
       const welcome =
         `❄️ <b>ИИ-Ассистент «Сметчик» — Бот управления доступом</b>\n\n` +
@@ -119,7 +186,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    // Команда /gen [count] или /code
     if (text.startsWith("/gen") || text.startsWith("/code")) {
       if (!isAdminTelegramUser(userId)) {
         await sendTelegramMessage(token, chatId, "⛔ Нет прав на генерацию кодов.");
@@ -158,6 +224,12 @@ export async function POST(req: NextRequest) {
         await sendTelegramMessage(token, chatId, "⛔ Нет прав.");
         return NextResponse.json({ ok: true });
       }
+      if (!process.env.DATABASE_URL) {
+        await sendTelegramMessage(token, chatId, "DATABASE_URL не настроен — база не подключена");
+        return NextResponse.json({ ok: true });
+      }
+      const { db } = await import("@/db");
+      const { accessCodes } = await import("@/db/schema");
       const { desc } = await import("drizzle-orm");
       const list = await db.select().from(accessCodes).orderBy(desc(accessCodes.createdAt)).limit(10);
       if (list.length === 0) {
@@ -178,19 +250,24 @@ export async function POST(req: NextRequest) {
         await sendTelegramMessage(token, chatId, "⛔ Нет прав.");
         return NextResponse.json({ ok: true });
       }
+      if (!process.env.DATABASE_URL) {
+        await sendTelegramMessage(token, chatId, "DATABASE_URL не настроен");
+        return NextResponse.json({ ok: true });
+      }
       const parts = text.split(" ");
       const codeToRevoke = parts[1]?.toUpperCase().trim();
       if (!codeToRevoke) {
         await sendTelegramMessage(token, chatId, "Укажите код: /revoke XXXX-XXXX");
         return NextResponse.json({ ok: true });
       }
+      const { db } = await import("@/db");
+      const { accessCodes } = await import("@/db/schema");
       const { eq } = await import("drizzle-orm");
       await db.delete(accessCodes).where(eq(accessCodes.code, codeToRevoke));
       await sendTelegramMessage(token, chatId, `🗑 Код <code>${codeToRevoke}</code> удалён/отозван.`);
       return NextResponse.json({ ok: true });
     }
 
-    // Неизвестная команда — подсказка
     await sendTelegramMessage(
       token,
       chatId,
@@ -205,29 +282,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Webhook error:", error);
-    return NextResponse.json({ ok: true }); // Возвращаем ok чтобы Telegram не ретраил бесконечно
+    return NextResponse.json({ ok: true });
   }
-}
-
-async function createCodeInDB(
-  telegramId: number | string,
-  username?: string,
-  note?: string
-) {
-  const code = generateAccessCode();
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 дней
-  const inserted = await db
-    .insert(accessCodes)
-    .values({
-      code,
-      isUsed: false,
-      expiresAt,
-      createdByTelegramId: String(telegramId),
-      createdByTelegramUsername: username || null,
-      note: note || "Создано через Telegram бот",
-    })
-    .returning();
-  return inserted[0];
 }
 
 export async function GET() {

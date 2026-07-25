@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { accessCodes } from "@/db/schema";
-import { eq } from "drizzle-orm";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json(
+        { success: false, message: "База данных не настроена на сервере" },
+        { status: 500 }
+      );
+    }
+
+    const { db } = await import("@/db");
+    const { accessCodes } = await import("@/db/schema");
+    const { eq } = await import("drizzle-orm");
+
     const { code, fingerprint, userAgent, deviceInfo } = await req.json();
 
     if (!code || !fingerprint) {
@@ -16,7 +26,6 @@ export async function POST(req: NextRequest) {
 
     const cleanCode = String(code).trim().toUpperCase().replace(/\s/g, "");
 
-    // Ищем код в БД
     const found = await db
       .select()
       .from(accessCodes)
@@ -32,7 +41,6 @@ export async function POST(req: NextRequest) {
 
     const access = found[0];
 
-    // Проверка срока действия (если есть expiresAt)
     if (access.expiresAt && new Date(access.expiresAt) < new Date()) {
       return NextResponse.json(
         { success: false, message: "Срок действия кода истёк." },
@@ -41,9 +49,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (access.isUsed) {
-      // Код уже использован
       if (access.deviceFingerprint === fingerprint) {
-        // Это то же устройство — разрешаем повторный вход (устройство работает всегда)
         return NextResponse.json({
           success: true,
           message: "Устройство уже авторизовано. Доступ разрешён.",
@@ -51,7 +57,6 @@ export async function POST(req: NextRequest) {
           code: access.code,
         });
       } else {
-        // Код использован на другом устройстве — ОТКАЗ
         return NextResponse.json(
           {
             success: false,
@@ -63,7 +68,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Код не использован — привязываем к текущему устройству и сжигаем
     const updated = await db
       .update(accessCodes)
       .set({
