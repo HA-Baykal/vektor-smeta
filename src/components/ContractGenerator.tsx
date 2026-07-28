@@ -55,10 +55,10 @@ export const ContractGenerator: React.FC<ContractGeneratorProps> = ({
 
   const [copied, setCopied] = useState(false);
 
-  // Sync equipment cost from inputs when it changes
+  // Sync equipment cost from calculation (supports multiple conditioners)
   useEffect(() => {
-    setEquipmentCostManual(inputs.equipmentPrice || 0);
-  }, [inputs.equipmentPrice]);
+    setEquipmentCostManual(calculation.equipmentTotal || inputs.equipmentPrice || 0);
+  }, [calculation.equipmentTotal, inputs.equipmentPrice, inputs.equipments]);
 
   // Sync total from calculation
   useEffect(() => {
@@ -386,7 +386,18 @@ export const ContractGenerator: React.FC<ContractGeneratorProps> = ({
           <div>
             <h3 className="font-bold uppercase text-center">1. ПРЕДМЕТ ДОГОВОРА</h3>
             <p className="mt-2">
-              1.1. Исполнитель обязуется оказать услуги по поставке и монтажу <strong>{inputs.modelName || "Сплит-система инверторного типа ___________________"}</strong> (далее в Договоре «Услуги/Работы»), а Заказчик обязуется принять и оплатить его стоимость.
+              1.1. Исполнитель обязуется оказать услуги по поставке и монтажу{" "}
+              <strong>
+                {inputs.equipments && inputs.equipments.length > 1
+                  ? `${inputs.equipments.length} кондиционеров: ${inputs.equipments.map((eq, i) => `${i + 1}) ${eq.modelName || "Сплит-система"} (${formatRuble(eq.equipmentPrice)})`).join("; ")}`
+                  : inputs.modelName || "Сплит-система инверторного типа ___________________"}
+              </strong>{" "}
+              (далее в Договоре «Услуги/Работы»), а Заказчик обязуется принять и оплатить его стоимость.
+              {calculation.equipmentsCount > 1 && (
+                <span className="block mt-1 text-2xs">
+                  Всего единиц оборудования: {calculation.equipmentsCount} шт на сумму {formatRuble(calculation.equipmentTotal)}
+                </span>
+              )}
             </p>
             <p className="mt-1">
               1.2. Место оказания Услуг: {customerAddress ? <strong>{customerAddress}{customerApartment ? `, ${customerApartment}` : ""}</strong> : "г. Иркутск, ул. Советская, д. 176/187, кв________"}

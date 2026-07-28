@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import {
   EstimateInputs,
+  EquipmentInput,
   BASE_INSTALLATION_PRICE,
   COMPLEXITY_PRICE_PER_HOUR,
   EXTRA_TRACE_PRICE_PER_METER,
@@ -10,23 +11,12 @@ import {
 } from "@/lib/calculator";
 import {
   Link as LinkIcon,
-  Search,
   Sparkles,
   Zap,
-  Layers,
-  Wrench,
-  ShieldAlert,
-  Percent,
-  Calendar,
-  User,
-  Phone,
-  MapPin,
-  FileText,
-  Check,
-  ChevronDown,
   Plus,
   Trash2,
-  AlertCircle,
+  Copy,
+  ExternalLink,
 } from "lucide-react";
 
 interface EstimateBuilderProps {
@@ -36,8 +26,8 @@ interface EstimateBuilderProps {
 
 export const EstimateBuilder: React.FC<EstimateBuilderProps> = ({ inputs, onChange }) => {
   const [isParsing, setIsParsing] = useState(false);
+  const [parsingIndex, setParsingIndex] = useState<number | null>(null);
   const [parseMessage, setParseMessage] = useState<string | null>(null);
-  const [showAddWorks, setShowAddWorks] = useState(false);
 
   const updateField = <K extends keyof EstimateInputs>(field: K, value: EstimateInputs[K]) => {
     onChange({
@@ -46,49 +36,163 @@ export const EstimateBuilder: React.FC<EstimateBuilderProps> = ({ inputs, onChan
     });
   };
 
-  const handleParseLink = async () => {
-    if (!inputs.equipmentUrl?.trim()) {
-      setParseMessage("Пожалуйста, укажите ссылку на товар");
+  const getEquipments = (): EquipmentInput[] => {
+    if (inputs.equipments && inputs.equipments.length > 0) {
+      return inputs.equipments;
+    }
+    // Convert main equipment to array for unified handling
+    return [
+      {
+        modelName: inputs.modelName || "",
+        equipmentPrice: inputs.equipmentPrice || 0,
+        equipmentBrand: inputs.equipmentBrand || "",
+        equipmentType: inputs.equipmentType || "Сплит-система",
+        equipmentUrl: inputs.equipmentUrl || "",
+        traceLength: inputs.traceLength || 4,
+        hasCableChannel: inputs.hasCableChannel || false,
+        cableChannelMeters: inputs.cableChannelMeters || 0,
+      },
+    ];
+  };
+
+  const setEquipments = (eqs: EquipmentInput[]) => {
+    if (eqs.length === 0) {
+      onChange({
+        ...inputs,
+        modelName: "",
+        equipmentPrice: 0,
+        equipmentBrand: "",
+        equipmentType: "Сплит-система",
+        equipmentUrl: "",
+        equipments: [],
+      });
+      return;
+    }
+
+    if (eqs.length === 1) {
+      // Keep main fields in sync for backward compat
+      onChange({
+        ...inputs,
+        modelName: eqs[0].modelName,
+        equipmentPrice: eqs[0].equipmentPrice,
+        equipmentBrand: eqs[0].equipmentBrand || "",
+        equipmentType: eqs[0].equipmentType || "Сплит-система",
+        equipmentUrl: eqs[0].equipmentUrl || "",
+        traceLength: eqs[0].traceLength || 4,
+        hasCableChannel: eqs[0].hasCableChannel || false,
+        cableChannelMeters: eqs[0].cableChannelMeters || 0,
+        equipments: eqs,
+      });
+    } else {
+      onChange({
+        ...inputs,
+        equipments: eqs,
+        // Keep main fields as summary
+        modelName: `${eqs.length} кондиционеров: ${eqs.map(e => e.modelName || "Без названия").join(", ").slice(0, 80)}`,
+      });
+    }
+  };
+
+  const handleParseLink = async (index: number) => {
+    const eqs = getEquipments();
+    const eq = eqs[index];
+    if (!eq.equipmentUrl?.trim()) {
+      setParseMessage(`Укажите ссылку для кондиционера ${index + 1}`);
       return;
     }
     setIsParsing(true);
+    setParsingIndex(index);
     setParseMessage(null);
     try {
       const res = await fetch("/api/parse-link", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: inputs.equipmentUrl }),
+        body: JSON.stringify({ url: eq.equipmentUrl }),
       });
       const json = await res.json();
       if (json.success && json.data) {
-        onChange({
-          ...inputs,
-          modelName: json.data.modelName || inputs.modelName,
-          equipmentPrice: json.data.equipmentPrice || inputs.equipmentPrice,
-          equipmentBrand: json.data.equipmentBrand || inputs.equipmentBrand,
-          equipmentType: json.data.equipmentType || inputs.equipmentType,
-        });
-        setParseMessage("Данные оборудования успешно извлечены!");
+        const newEqs = [...eqs];
+        newEqs[index] = {
+          ...newEqs[index],
+          modelName: json.data.modelName || newEqs[index].modelName,
+          equipmentPrice: json.data.equipmentPrice || newEqs[index].equipmentPrice,
+          equipmentBrand: json.data.equipmentBrand || newEqs[index].equipmentBrand,
+          equipmentType: json.data.equipmentType || newEqs[index].equipmentType,
+        };
+        setEquipments(newEqs);
+        setParseMessage(`Данные для кондиционера ${index + 1} извлечены: ${json.data.modelName}`);
       } else {
-        setParseMessage("Автопарсинг недоступен для данной ссылки. Укажите название и цену вручную.");
+        setParseMessage("Автопарсинг недоступен. Введите вручную.");
       }
     } catch {
-      setParseMessage("Не удалось загрузить страницу. Пожалуйста, введите модель и цену вручную.");
+      setParseMessage("Не удалось загрузить страницу. Введите вручную.");
     } finally {
       setIsParsing(false);
+      setParsingIndex(null);
     }
   };
 
+  const addEquipment = () => {
+    const eqs = getEquipments();
+    const newEq: EquipmentInput = {
+      modelName: "",
+      equipmentPrice: 0,
+      equipmentBrand: "",
+      equipmentType: "Сплит-система",
+      equipmentUrl: "",
+      traceLength: inputs.traceLength || 4,
+      hasCableChannel: false,
+      cableChannelMeters: 0,
+    };
+    setEquipments([...eqs, newEq]);
+  };
+
+  const removeEquipment = (index: number) => {
+    const eqs = getEquipments();
+    if (eqs.length <= 1) {
+      // Clear instead of remove last
+      setEquipments([
+        {
+          modelName: "",
+          equipmentPrice: 0,
+          equipmentBrand: "",
+          equipmentType: "Сплит-система",
+          equipmentUrl: "",
+          traceLength: 4,
+          hasCableChannel: false,
+          cableChannelMeters: 0,
+        },
+      ]);
+      return;
+    }
+    const newEqs = eqs.filter((_, i) => i !== index);
+    setEquipments(newEqs);
+  };
+
+  const updateEquipment = (index: number, field: keyof EquipmentInput, value: any) => {
+    const eqs = getEquipments();
+    const newEqs = [...eqs];
+    newEqs[index] = { ...newEqs[index], [field]: value };
+    
+    // If traceLength reduced below cableChannelMeters, adjust cable meters
+    if (field === "traceLength" && newEqs[index].hasCableChannel) {
+      const trace = Number(value) || 4;
+      const cableM = Number(newEqs[index].cableChannelMeters) || 0;
+      if (cableM > trace) {
+        newEqs[index].cableChannelMeters = trace;
+      }
+    }
+    
+    setEquipments(newEqs);
+  };
+
+  const equipments = getEquipments();
   const extraMeters = Math.max(0, (inputs.traceLength || 4) - 5);
-  const cableMetersEffective = inputs.hasCableChannel
-    ? Math.min(inputs.cableChannelMeters && inputs.cableChannelMeters > 0 ? inputs.cableChannelMeters : (inputs.traceLength || 4), inputs.traceLength || 4)
-    : 0;
-  const packsCount = cableMetersEffective > 0 ? Math.ceil(cableMetersEffective / 2) : 0;
 
   return (
     <div className="space-y-6">
-      {/* STEP 1: Equipment & Link */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs">
+      {/* STEP 1: Multiple Equipments */}
+      <div className="bg-white rounded-2xl p-4 md:p-6 border border-slate-200 shadow-xs">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">
@@ -96,35 +200,20 @@ export const EstimateBuilder: React.FC<EstimateBuilderProps> = ({ inputs, onChan
             </div>
             <div>
               <h3 className="font-bold text-base text-slate-900">
-                Шаг 1. Оборудование и ссылка на кондиционер
+                Шаг 1. Оборудование — {equipments.length} {equipments.length === 1 ? "кондиционер" : equipments.length < 5 ? "кондиционера" : "кондиционеров"}
               </h3>
               <p className="text-xs text-slate-500">
-                Вставьте ссылку на товар (Авито, Яндекс.Маркет, DNS) или введите данные вручную
+                Добавьте ссылки, парсите цены или вводите вручную. Можно добавить 2-3 кондиционера для одного договора.
               </p>
             </div>
           </div>
-        </div>
-
-        {/* Link Input Bar */}
-        <div className="flex flex-col sm:flex-row gap-2 mb-4">
-          <div className="relative flex-1">
-            <LinkIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-            <input
-              type="text"
-              value={inputs.equipmentUrl || ""}
-              onChange={(e) => updateField("equipmentUrl", e.target.value)}
-              placeholder="https://market.yandex.ru/product/... или https://avito.ru/..."
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none transition"
-            />
-          </div>
           <button
             type="button"
-            onClick={handleParseLink}
-            disabled={isParsing}
-            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-98 text-white text-sm font-semibold rounded-xl flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-60 shadow-xs"
+            onClick={addEquipment}
+            className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition"
           >
-            <Zap className="w-4 h-4 text-amber-300" />
-            {isParsing ? "Парсинг..." : "Парсить ссылку"}
+            <Plus className="w-4 h-4" />
+            Добавить кондиционер
           </button>
         </div>
 
@@ -135,397 +224,270 @@ export const EstimateBuilder: React.FC<EstimateBuilderProps> = ({ inputs, onChan
           </div>
         )}
 
-        {/* Manual inputs grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pt-2">
-          <div className="md:col-span-2">
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Название модели кондиционера *
-            </label>
-            <input
-              type="text"
-              value={inputs.modelName}
-              onChange={(e) => updateField("modelName", e.target.value)}
-              placeholder="Haier Coral HSU-07HPL102/R3"
-              className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-sm font-medium text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-            />
-          </div>
+        <div className="space-y-5">
+          {equipments.map((eq, idx) => {
+            const eqTrace = eq.traceLength || 4;
+            const eqCableMeters = eq.hasCableChannel
+              ? Math.min(eq.cableChannelMeters && eq.cableChannelMeters > 0 ? eq.cableChannelMeters : eqTrace, eqTrace)
+              : 0;
+            const eqPacks = eqCableMeters > 0 ? Math.ceil(eqCableMeters / 2) : 0;
+            const eqExtra = Math.max(0, eqTrace - 5);
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Цена оборудования (₽) *
-            </label>
-            <input
-              type="number"
-              min={0}
-              step={100}
-              value={inputs.equipmentPrice || ""}
-              onChange={(e) => updateField("equipmentPrice", parseInt(e.target.value, 10) || 0)}
-              className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-sm font-bold text-blue-900 font-mono focus:ring-2 focus:ring-blue-600 focus:outline-none"
-            />
-          </div>
+            return (
+              <div key={idx} className="p-4 rounded-xl border-2 border-slate-200 bg-slate-50/50 space-y-3 relative">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold text-xs">
+                      {idx + 1}
+                    </div>
+                    <span className="font-bold text-sm text-slate-900">
+                      Кондиционер {idx + 1}
+                    </span>
+                    {eq.equipmentPrice > 0 && (
+                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full text-2xs font-bold">
+                        {eq.equipmentPrice.toLocaleString("ru-RU")} ₽
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newEqs = [...equipments];
+                        const copy = { ...eq, id: undefined };
+                        newEqs.splice(idx + 1, 0, copy);
+                        setEquipments(newEqs);
+                      }}
+                      className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg border border-transparent hover:border-blue-200"
+                      title="Дублировать"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeEquipment(idx)}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg border border-transparent hover:border-rose-200"
+                      title="Удалить"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
 
+                {/* Link + Parse row */}
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="relative flex-1">
+                    <LinkIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                    <input
+                      type="text"
+                      value={eq.equipmentUrl || ""}
+                      onChange={(e) => updateEquipment(idx, "equipmentUrl", e.target.value)}
+                      placeholder="https://... ссылка на кондиционер (Авито, Яндекс.Маркет, Русклимат, Даичи)"
+                      className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none transition"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleParseLink(idx)}
+                    disabled={isParsing && parsingIndex === idx}
+                    className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition shadow-xs whitespace-nowrap"
+                  >
+                    <Zap className="w-4 h-4 text-amber-300" />
+                    {isParsing && parsingIndex === idx ? "Парсинг..." : "Парсить"}
+                  </button>
+                </div>
+
+                {/* Manual fields grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-3">
+                  <div className="md:col-span-6">
+                    <label className="block text-2xs font-semibold text-slate-700 mb-1">Модель *</label>
+                    <input
+                      type="text"
+                      value={eq.modelName}
+                      onChange={(e) => updateEquipment(idx, "modelName", e.target.value)}
+                      placeholder="Ballu Eco Pro 09 / Axioma ASX09HZ1R"
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-sm font-medium text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    />
+                  </div>
+                  <div className="md:col-span-3">
+                    <label className="block text-2xs font-semibold text-slate-700 mb-1">Цена (₽) *</label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={100}
+                      value={eq.equipmentPrice || ""}
+                      onChange={(e) => updateEquipment(idx, "equipmentPrice", parseInt(e.target.value, 10) || 0)}
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-sm font-bold text-blue-900 font-mono focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                      placeholder="35000"
+                    />
+                  </div>
+                  <div className="md:col-span-3">
+                    <label className="block text-2xs font-semibold text-slate-700 mb-1">Тип</label>
+                    <select
+                      value={eq.equipmentType || "Сплит-система"}
+                      onChange={(e) => updateEquipment(idx, "equipmentType", e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    >
+                      <option value="Сплит-система">Сплит</option>
+                      <option value="Инверторная сплит-система">Инвертор</option>
+                      <option value="Мульти-сплит система">Мульти-сплит</option>
+                      <option value="Канальный кондиционер">Канальный</option>
+                      <option value="Кассетный кондиционер">Кассетный</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Per-equipment trace and cable */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-slate-200/60">
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="text-2xs font-bold text-slate-700">Трасса (м):</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="range"
+                        min={1}
+                        max={25}
+                        value={eqTrace}
+                        onChange={(e) => updateEquipment(idx, "traceLength", parseInt(e.target.value, 10))}
+                        className="w-20 accent-blue-600 h-1.5"
+                      />
+                      <span className="font-mono font-bold text-xs bg-white px-2 py-1 rounded border min-w-[45px] text-center">
+                        {eqTrace} м
+                      </span>
+                      {eqExtra > 0 && (
+                        <span className="text-2xs text-amber-700 font-bold">
+                          +{eqExtra}м = {(eqExtra * EXTRA_TRACE_PRICE_PER_METER).toLocaleString("ru-RU")}₽
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="text-2xs font-bold text-slate-700">Кабель-канал:</label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => updateEquipment(idx, "hasCableChannel", !eq.hasCableChannel)}
+                        className={`px-2.5 py-1 rounded-lg text-2xs font-bold border transition ${
+                          eq.hasCableChannel ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-600 border-slate-300"
+                        }`}
+                      >
+                        {eq.hasCableChannel ? `Да ${eqCableMeters}м` : "Нет"}
+                      </button>
+                      {eq.hasCableChannel && (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            min={1}
+                            max={eqTrace}
+                            value={eqCableMeters}
+                            onChange={(e) => updateEquipment(idx, "cableChannelMeters", parseInt(e.target.value, 10) || 0)}
+                            className="w-14 px-1.5 py-1 bg-white border border-slate-300 rounded text-2xs font-mono font-bold text-center"
+                          />
+                          <span className="text-2xs text-slate-500">м = {eqPacks}уп { (eqPacks * CABLE_CHANNEL_PACK_PRICE).toLocaleString("ru-RU")}₽</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-800 flex items-start gap-2">
+          <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-2xs font-bold shrink-0 mt-0.5">i</div>
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Тип кондиционера
-            </label>
-            <select
-              value={inputs.equipmentType || "Сплит-система"}
-              onChange={(e) => updateField("equipmentType", e.target.value)}
-              className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-sm text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-            >
-              <option value="Сплит-система">Сплит-система</option>
-              <option value="Инверторная сплит-система">Инверторная сплит-система</option>
-              <option value="Мульти-сплит система">Мульти-сплит система</option>
-              <option value="Канальный кондиционер">Канальный кондиционер</option>
-              <option value="Кассетный кондиционер">Кассетный кондиционер</option>
-            </select>
+            <div className="font-bold">Несколько кондиционеров в одном договоре:</div>
+            <div>Добавьте 2-3 кондиционера кнопкой выше. Смета автоматически пересчитается: оборудование суммируется, монтаж 18 000 ₽ × количество, трасса и кабель-канал считаются для каждого блока отдельно. В договоре будут перечислены все кондиционеры.</div>
           </div>
         </div>
       </div>
 
-      {/* STEP 2: Installation Parameters */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs">
-        <div className="flex items-center gap-2.5 mb-5">
-          <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm">
-            2
-          </div>
+      {/* STEP 2: Global params */}
+      <div className="bg-white rounded-2xl p-4 md:p-6 border border-slate-200 shadow-xs">
+        <div className="flex items-center gap-2.5 mb-4">
+          <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm">2</div>
           <div>
-            <h3 className="font-bold text-base text-slate-900">
-              Шаг 2. Уточнение параметров монтажа
-            </h3>
-            <p className="text-xs text-slate-500">
-              Длина трассы, сложность и необходимость укладки в кабель-канал
-            </p>
+            <h3 className="font-bold text-base text-slate-900">Шаг 2. Общие параметры монтажа</h3>
+            <p className="text-xs text-slate-500">Сложность, скидка, НДС — применяются ко всей смете</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* 1. Trace length */}
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-bold text-slate-800">
-                  Длина трассы (расстояние между блоками)
-                </label>
-                <span className="text-base font-extrabold text-blue-700 font-mono bg-blue-100 px-2 py-0.5 rounded-lg">
-                  {inputs.traceLength || 4} м
-                </span>
-              </div>
-              <input
-                type="range"
-                min={1}
-                max={25}
-                step={1}
-                value={inputs.traceLength || 4}
-                onChange={(e) => updateField("traceLength", parseInt(e.target.value, 10))}
-                className="w-full accent-blue-600 cursor-pointer h-2 bg-slate-200 rounded-lg"
-              />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+            <label className="block text-xs font-bold text-slate-800 mb-2">Сложность монтажа</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  updateField("complexity", "standard");
+                  updateField("complexityHours", 0);
+                }}
+                className={`px-3 py-2 rounded-xl text-xs font-semibold border transition cursor-pointer ${inputs.complexity === "standard" ? "bg-emerald-600 text-white border-emerald-600" : "bg-white text-slate-700 border-slate-300"}`}
+              >
+                Стандартный
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  updateField("complexity", "complex");
+                  if (!inputs.complexityHours) updateField("complexityHours", 2);
+                }}
+                className={`px-3 py-2 rounded-xl text-xs font-semibold border transition cursor-pointer ${inputs.complexity === "complex" ? "bg-amber-600 text-white border-amber-600" : "bg-white text-slate-700 border-slate-300"}`}
+              >
+                Сложный (+1 000 ₽/ч)
+              </button>
             </div>
-
-            <div className="mt-3 text-xs pt-2 border-t border-slate-200">
-              {extraMeters > 0 ? (
-                <div className="text-amber-800 font-medium">
-                  Свыше 5 м: +{extraMeters} м × 2 100 ₽ ={" "}
-                  <strong>{(extraMeters * EXTRA_TRACE_PRICE_PER_METER).toLocaleString("ru-RU")} ₽</strong>
-                </div>
-              ) : (
-                <div className="text-emerald-700 font-medium">
-                  До 5 м включено в базовый монтаж (18 000 ₽)
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* 2. Complexity */}
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
-            <div>
-              <label className="block text-xs font-bold text-slate-800 mb-2">
-                Сложность монтажа
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    updateField("complexity", "standard");
-                    updateField("complexityHours", 0);
-                  }}
-                  className={`px-3 py-2 rounded-xl text-xs font-semibold border transition cursor-pointer ${
-                    inputs.complexity === "standard"
-                      ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
-                      : "bg-white text-slate-700 border-slate-300 hover:bg-slate-100"
-                  }`}
-                >
-                  Стандартный (0 ₽)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    updateField("complexity", "complex");
-                    if (!inputs.complexityHours) updateField("complexityHours", 2);
-                  }}
-                  className={`px-3 py-2 rounded-xl text-xs font-semibold border transition cursor-pointer ${
-                    inputs.complexity === "complex"
-                      ? "bg-amber-600 text-white border-amber-600 shadow-xs"
-                      : "bg-white text-slate-700 border-slate-300 hover:bg-slate-100"
-                  }`}
-                >
-                  Сложный (+1 000 ₽/ч)
-                </button>
-              </div>
-            </div>
-
             {inputs.complexity === "complex" && (
-              <div className="mt-3 pt-2 border-t border-slate-200 flex items-center justify-between text-xs">
-                <span className="text-slate-700 font-medium">Часов сложности:</span>
+              <div className="mt-3 flex items-center justify-between text-xs border-t border-slate-200 pt-2">
+                <span>Часов сложности:</span>
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      updateField("complexityHours", Math.max(1, (inputs.complexityHours || 1) - 1))
-                    }
-                    className="w-6 h-6 rounded bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold"
-                  >
-                    -
-                  </button>
-                  <span className="font-bold font-mono text-sm px-1.5">
-                    {inputs.complexityHours || 1} ч
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      updateField("complexityHours", Math.min(12, (inputs.complexityHours || 1) + 1))
-                    }
-                    className="w-6 h-6 rounded bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold"
-                  >
-                    +
-                  </button>
+                  <button type="button" onClick={() => updateField("complexityHours", Math.max(1, (inputs.complexityHours || 1) - 1))} className="w-6 h-6 rounded bg-slate-200 font-bold">-</button>
+                  <span className="font-bold font-mono">{inputs.complexityHours || 1} ч</span>
+                  <button type="button" onClick={() => updateField("complexityHours", Math.min(12, (inputs.complexityHours || 1) + 1))} className="w-6 h-6 rounded bg-slate-200 font-bold">+</button>
                 </div>
               </div>
             )}
           </div>
 
-          {/* 3. Cable duct with selectable meters */}
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
-            <div>
-              <label className="block text-xs font-bold text-slate-800 mb-2">
-                Кабель-канал (короб) — выбор метража
-              </label>
-              <div className="grid grid-cols-2 gap-2 mb-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    updateField("hasCableChannel", false);
-                    updateField("cableChannelMeters", 0);
-                  }}
-                  className={`px-3 py-2 rounded-xl text-xs font-semibold border transition cursor-pointer ${
-                    !inputs.hasCableChannel
-                      ? "bg-slate-800 text-white border-slate-800 shadow-xs"
-                      : "bg-white text-slate-700 border-slate-300 hover:bg-slate-100"
-                  }`}
-                >
-                  Без короба (0 ₽)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    updateField("hasCableChannel", true);
-                    if (!inputs.cableChannelMeters || inputs.cableChannelMeters === 0) {
-                      updateField("cableChannelMeters", Math.min(2, inputs.traceLength || 4));
-                    }
-                  }}
-                  className={`px-3 py-2 rounded-xl text-xs font-semibold border transition cursor-pointer ${
-                    inputs.hasCableChannel
-                      ? "bg-blue-600 text-white border-blue-600 shadow-xs"
-                      : "bg-white text-slate-700 border-slate-300 hover:bg-slate-100"
-                  }`}
-                >
-                  В кабель-канале
-                </button>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+              <label className="block text-xs font-bold text-slate-800 mb-2">Скидка</label>
+              <div className="flex gap-2">
+                <select value={inputs.discountType || "none"} onChange={(e) => updateField("discountType", e.target.value as any)} className="px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs">
+                  <option value="none">Без скидки</option>
+                  <option value="percent">% Процент</option>
+                  <option value="fixed">Фикс ₽</option>
+                </select>
+                {inputs.discountType !== "none" && (
+                  <input type="number" value={inputs.discountValue || ""} onChange={(e) => updateField("discountValue", parseInt(e.target.value, 10) || 0)} className="w-20 px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold" placeholder={inputs.discountType === "percent" ? "5" : "2000"} />
+                )}
               </div>
-
-              {inputs.hasCableChannel && (
-                <div className="space-y-2 p-3 bg-white rounded-xl border border-blue-200">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-700">Метров в кабель-канале:</span>
-                    <span className="font-bold font-mono text-blue-700 text-sm">
-                      {cableMetersEffective} м из {inputs.traceLength || 4} м трассы
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={1}
-                    max={inputs.traceLength || 4}
-                    step={1}
-                    value={cableMetersEffective}
-                    onChange={(e) => updateField("cableChannelMeters", parseInt(e.target.value, 10))}
-                    className="w-full accent-blue-600 h-2 bg-slate-200 rounded-lg cursor-pointer"
-                  />
-                  <div className="flex items-center justify-between text-2xs text-slate-500">
-                    <span>1 м</span>
-                    <span>{inputs.traceLength || 4} м (вся трасса)</span>
-                  </div>
-                  <div className="flex gap-1 flex-wrap">
-                    {[1, 2, 3, 4, 6, 8].filter(n => n <= (inputs.traceLength || 4)).map((m) => (
-                      <button
-                        key={m}
-                        type="button"
-                        onClick={() => updateField("cableChannelMeters", m)}
-                        className={`px-2 py-1 rounded text-2xs font-semibold border ${
-                          cableMetersEffective === m
-                            ? "bg-blue-600 text-white border-blue-600"
-                            : "bg-slate-50 text-slate-600 border-slate-300 hover:bg-blue-50"
-                        }`}
-                      >
-                        {m} м
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => updateField("cableChannelMeters", inputs.traceLength || 4)}
-                      className={`px-2 py-1 rounded text-2xs font-semibold border ${
-                        cableMetersEffective === (inputs.traceLength || 4)
-                          ? "bg-blue-600 text-white border-blue-600"
-                          : "bg-slate-50 text-slate-600 border-slate-300 hover:bg-blue-50"
-                      }`}
-                    >
-                      Вся трасса
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
-
-            <div className="mt-3 text-xs pt-2 border-t border-slate-200">
-              {inputs.hasCableChannel && cableMetersEffective > 0 ? (
-                <div className="text-blue-800 font-medium">
-                  {cableMetersEffective} м в коробе → {packsCount} упак. × 2 м = {cableMetersEffective} м ={" "}
-                  <strong>{(packsCount * CABLE_CHANNEL_PACK_PRICE).toLocaleString("ru-RU")} ₽</strong>
-                  <div className="text-2xs text-slate-500 mt-0.5">
-                    Остальная трасса {Math.max(0, (inputs.traceLength || 4) - cableMetersEffective)} м — открытая
-                  </div>
-                </div>
-              ) : (
-                <div className="text-slate-500">Доплата 0 ₽ (без пластикового короба)</div>
-              )}
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+              <label className="block text-xs font-bold text-slate-800 mb-2">НДС</label>
+              <select value={inputs.vatType || "none"} onChange={(e) => updateField("vatType", e.target.value as any)} className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs">
+                <option value="none">Без НДС</option>
+                <option value="vat6">С НДС 6%</option>
+              </select>
             </div>
           </div>
         </div>
       </div>
 
-      {/* STEP 3: Client Details, Discounts & Commercial parameters */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-sm">
-              3
-            </div>
-            <div>
-              <h3 className="font-bold text-base text-slate-900">
-                Шаг 3. Реквизиты клиента, скидки и НДС
-              </h3>
-              <p className="text-xs text-slate-500">
-                Эти данные автоматически попадут на лист «Параметры» в Excel и PDF
-              </p>
-            </div>
+      {/* STEP 3: Client */}
+      <div className="bg-white rounded-2xl p-4 md:p-6 border border-slate-200 shadow-xs">
+        <div className="flex items-center gap-2.5 mb-4">
+          <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-sm">3</div>
+          <div>
+            <h3 className="font-bold text-base text-slate-900">Шаг 3. Заказчик (пусто по умолчанию)</h3>
+            <p className="text-xs text-slate-500">Заполните вручную для договора</p>
           </div>
         </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              ФИО / Имя клиента
-            </label>
-            <input
-              type="text"
-              value={inputs.clientName || ""}
-              onChange={(e) => updateField("clientName", e.target.value)}
-              placeholder="Иван Петров"
-              className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-sm text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Телефон клиента
-            </label>
-            <input
-              type="text"
-              value={inputs.clientPhone || ""}
-              onChange={(e) => updateField("clientPhone", e.target.value)}
-              placeholder="+7 (999) 123-45-67"
-              className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-sm text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Адрес монтажа
-            </label>
-            <input
-              type="text"
-              value={inputs.clientAddress || ""}
-              onChange={(e) => updateField("clientAddress", e.target.value)}
-              placeholder="г. Москва, ул. Ленина, д. 42, кв. 15"
-              className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-sm text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Дата монтажа
-            </label>
-            <input
-              type="date"
-              value={inputs.installationDate || ""}
-              onChange={(e) => updateField("installationDate", e.target.value)}
-              className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-sm text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-            />
-          </div>
-        </div>
-
-        {/* Discounts & VAT switches */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-slate-100">
-          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-            <label className="block text-xs font-bold text-slate-800 mb-2">
-              Скидка клиенту
-            </label>
-            <div className="flex items-center gap-2">
-              <select
-                value={inputs.discountType || "none"}
-                onChange={(e) => updateField("discountType", e.target.value as any)}
-                className="px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-800"
-              >
-                <option value="none">Без скидки</option>
-                <option value="percent">Процентная (%)</option>
-                <option value="fixed">Фиксированная сумма (₽)</option>
-              </select>
-
-              {inputs.discountType && inputs.discountType !== "none" && (
-                <input
-                  type="number"
-                  min={0}
-                  value={inputs.discountValue || ""}
-                  onChange={(e) => updateField("discountValue", parseInt(e.target.value, 10) || 0)}
-                  placeholder={inputs.discountType === "percent" ? "5%" : "2000 ₽"}
-                  className="w-24 px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-bold font-mono text-slate-900"
-                />
-              )}
-            </div>
-          </div>
-
-          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-            <label className="block text-xs font-bold text-slate-800 mb-2">
-              Режим налогообложения / НДС
-            </label>
-            <select
-              value={inputs.vatType || "none"}
-              onChange={(e) => updateField("vatType", e.target.value as any)}
-              className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-800"
-            >
-              <option value="none">Без НДС</option>
-              <option value="vat6">С НДС 6%</option>
-            </select>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <input type="text" value={inputs.clientName || ""} onChange={(e) => updateField("clientName", e.target.value)} placeholder="ФИО Заказчика" className="px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-sm" />
+          <input type="text" value={inputs.clientPhone || ""} onChange={(e) => updateField("clientPhone", e.target.value)} placeholder="Телефон" className="px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-sm" />
+          <input type="text" value={inputs.clientAddress || ""} onChange={(e) => updateField("clientAddress", e.target.value)} placeholder="Адрес монтажа" className="px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-sm" />
         </div>
       </div>
     </div>

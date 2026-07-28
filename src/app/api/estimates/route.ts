@@ -52,6 +52,7 @@ export async function POST(req: NextRequest) {
         hasCableChannel: Boolean(body.hasCableChannel),
         cableChannelMeters: Number(body.cableChannelMeters) || calc.cableChannelMeters || 0,
         cableChannelPacks: calc.cableChannelPacks,
+        equipmentsJson: JSON.stringify(body.equipments || []),
         additionalItemsJson: JSON.stringify(body.additionalItems || []),
         discountType: body.discountType || "none",
         discountValue: Number(body.discountValue) || 0,

@@ -14,6 +14,7 @@ export const estimates = pgTable("estimates", {
   hasCableChannel: boolean("has_cable_channel").notNull().default(false),
   cableChannelMeters: integer("cable_channel_meters").notNull().default(0),
   cableChannelPacks: integer("cable_channel_packs").notNull().default(0),
+  equipmentsJson: text("equipments_json").default("[]"),
   additionalItemsJson: text("additional_items_json").default("[]"),
   discountType: text("discount_type").default("none"), // 'none' | 'percent' | 'fixed'
   discountValue: integer("discount_value").default(0),
