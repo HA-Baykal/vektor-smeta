@@ -64,6 +64,7 @@ export interface EstimateCalculationResult {
   items: EstimateItem[];
   equipmentTotal: number;
   installationTotal: number;
+  mountingTotal: number;
   extraTraceCost: number;
   extraTraceMeters: number;
   complexityCost: number;
@@ -86,11 +87,16 @@ export const EXTRA_TRACE_PRICE_PER_METER = 2100;
 export const CABLE_CHANNEL_PACK_PRICE = 1200;
 
 export function calculateEstimate(inputs: EstimateInputs): EstimateCalculationResult {
+  const contractType = inputs.contractType || "sale_installation";
+  const isMaintenanceOnly = contractType === "maintenance";
+  const isSaleInstallation = contractType === "sale_installation";
+  const isBoth = contractType === "both";
+
   const isComplex = inputs.complexity === "complex";
   const hours = isComplex ? Math.max(1, Number(inputs.complexityHours) || 1) : 0;
   const complexityCost = isComplex ? hours * COMPLEXITY_PRICE_PER_HOUR : 0;
 
-  // Build equipments list - support multiple
+  // Build equipments list
   let equipments: EquipmentInput[] = [];
   
   if (inputs.equipments && Array.isArray(inputs.equipments) && inputs.equipments.length > 0) {
@@ -105,11 +111,11 @@ export function calculateEstimate(inputs: EstimateInputs): EstimateCalculationRe
       cableChannelMeters: eq.cableChannelMeters !== undefined ? Number(eq.cableChannelMeters) : (inputs.cableChannelMeters !== undefined ? Number(inputs.cableChannelMeters) : undefined),
     }));
   } else {
-    // Single equipment from main fields (backward compatibility)
+    // Single equipment fallback
     const hasEquip = (inputs.modelName && inputs.modelName.trim() !== "") || (inputs.equipmentPrice && inputs.equipmentPrice > 0);
-    if (hasEquip || true) { // Always at least 1 if no equipments array
+    if (hasEquip || !isMaintenanceOnly) {
       equipments = [{
-        modelName: inputs.modelName || "Кондиционер",
+        modelName: inputs.modelName || (isMaintenanceOnly ? "" : "Кондиционер"),
         equipmentPrice: Number(inputs.equipmentPrice) || 0,
         equipmentBrand: inputs.equipmentBrand || "",
         equipmentType: inputs.equipmentType || "Сплит-система",
@@ -118,17 +124,11 @@ export function calculateEstimate(inputs: EstimateInputs): EstimateCalculationRe
         hasCableChannel: Boolean(inputs.hasCableChannel),
         cableChannelMeters: inputs.cableChannelMeters !== undefined ? Number(inputs.cableChannelMeters) : undefined,
       }];
+      // For maintenance-only, if no equipment name/price, make empty list
+      if (isMaintenanceOnly && !hasEquip) {
+        equipments = [];
+      }
     }
-  }
-
-  // If no equipment at all and modelName empty and price 0, keep at least 1 empty for UI
-  if (equipments.length === 0) {
-    equipments = [{
-      modelName: "Кондиционер",
-      equipmentPrice: 0,
-      traceLength: Math.max(1, Number(inputs.traceLength) || 4),
-      hasCableChannel: false,
-    }];
   }
 
   let equipmentTotal = 0;
@@ -142,99 +142,111 @@ export function calculateEstimate(inputs: EstimateInputs): EstimateCalculationRe
   const items: EstimateItem[] = [];
   let itemCounter = 1;
 
-  equipments.forEach((eq, eqIdx) => {
-    const eqPrice = Number(eq.equipmentPrice) || 0;
-    const eqTrace = Math.max(1, Number(eq.traceLength) || 4);
-    const eqHasCable = Boolean(eq.hasCableChannel);
-    
-    let eqCableMeters = 0;
-    if (eqHasCable) {
-      const raw = eq.cableChannelMeters;
-      if (raw !== undefined && raw !== null && Number(raw) > 0) {
-        eqCableMeters = Math.min(Math.max(1, Math.round(Number(raw))), eqTrace);
-      } else {
-        eqCableMeters = eqTrace;
+  // Only add equipment and mounting if not maintenance-only
+  if (!isMaintenanceOnly) {
+    equipments.forEach((eq, eqIdx) => {
+      const eqPrice = Number(eq.equipmentPrice) || 0;
+      const eqTrace = Math.max(1, Number(eq.traceLength) || 4);
+      const eqHasCable = Boolean(eq.hasCableChannel);
+      
+      let eqCableMeters = 0;
+      if (eqHasCable) {
+        const raw = eq.cableChannelMeters;
+        if (raw !== undefined && raw !== null && Number(raw) > 0) {
+          eqCableMeters = Math.min(Math.max(1, Math.round(Number(raw))), eqTrace);
+        } else {
+          eqCableMeters = eqTrace;
+        }
       }
-    }
 
-    const eqExtraMeters = Math.max(0, eqTrace - 5);
-    const eqExtraCost = eqExtraMeters * EXTRA_TRACE_PRICE_PER_METER;
-    const eqCablePacks = eqCableMeters > 0 ? Math.ceil(eqCableMeters / 2) : 0;
-    const eqCableCost = eqCablePacks * CABLE_CHANNEL_PACK_PRICE;
+      const eqExtraMeters = Math.max(0, eqTrace - 5);
+      const eqExtraCost = eqExtraMeters * EXTRA_TRACE_PRICE_PER_METER;
+      const eqCablePacks = eqCableMeters > 0 ? Math.ceil(eqCableMeters / 2) : 0;
+      const eqCableCost = eqCablePacks * CABLE_CHANNEL_PACK_PRICE;
 
-    equipmentTotal += eqPrice;
-    baseInstallTotal += BASE_INSTALLATION_PRICE;
-    extraTraceTotal += eqExtraCost;
-    extraTraceMetersTotal += eqExtraMeters;
-    cableChannelTotal += eqCableCost;
-    cableChannelPacksTotal += eqCablePacks;
-    cableChannelMetersTotal += eqCableMeters;
+      equipmentTotal += eqPrice;
+      baseInstallTotal += BASE_INSTALLATION_PRICE;
+      extraTraceTotal += eqExtraCost;
+      extraTraceMetersTotal += eqExtraMeters;
+      cableChannelTotal += eqCableCost;
+      cableChannelPacksTotal += eqCablePacks;
+      cableChannelMetersTotal += eqCableMeters;
 
-    const prefix = equipments.length > 1 ? `Кондиционер ${eqIdx + 1}: ` : `Кондиционер `;
-    
-    // Equipment
-    items.push({
-      id: itemCounter++,
-      name: `${prefix}${eq.modelName || "Сплит-система"}`,
-      quantity: 1,
-      unit: "шт",
-      pricePerUnit: eqPrice,
-      total: eqPrice,
-    });
+      const prefix = equipments.length > 1 ? `Кондиционер ${eqIdx + 1}: ` : `Кондиционер `;
+      
+      if (eqPrice > 0 || eq.modelName) {
+        items.push({
+          id: itemCounter++,
+          name: `${prefix}${eq.modelName || "Сплит-система"}`,
+          quantity: 1,
+          unit: "шт",
+          pricePerUnit: eqPrice,
+          total: eqPrice,
+        });
+      }
 
-    // Installation per equipment
-    const installName = equipments.length > 1 
-      ? `Стандартный монтаж (трасса до 5 м) - блок ${eqIdx + 1}` 
-      : `Стандартный монтаж (трасса до 5 м)`;
-    
-    items.push({
-      id: itemCounter++,
-      name: installName,
-      quantity: 1,
-      unit: "компл",
-      pricePerUnit: BASE_INSTALLATION_PRICE,
-      total: BASE_INSTALLATION_PRICE,
-    });
-
-    // Extra trace per equipment
-    if (eqExtraMeters > 0) {
+      const installName = equipments.length > 1 
+        ? `Стандартный монтаж (трасса до 5 м) - блок ${eqIdx + 1} (${eqTrace}м)` 
+        : `Стандартный монтаж (трасса до 5 м) (${eqTrace}м)`;
+      
       items.push({
         id: itemCounter++,
-        name: equipments.length > 1 
-          ? `Доплата за трассу свыше 5 м - блок ${eqIdx + 1} (${eqExtraMeters} м)` 
-          : `Доплата за трассу свыше 5 м`,
-        quantity: eqExtraMeters,
-        unit: "м",
-        pricePerUnit: EXTRA_TRACE_PRICE_PER_METER,
-        total: eqExtraCost,
+        name: installName,
+        quantity: 1,
+        unit: "компл",
+        pricePerUnit: BASE_INSTALLATION_PRICE,
+        total: BASE_INSTALLATION_PRICE,
       });
-    }
 
-    // Cable channel per equipment
-    if (eqHasCable && eqCablePacks > 0) {
+      if (eqExtraMeters > 0) {
+        items.push({
+          id: itemCounter++,
+          name: equipments.length > 1 
+            ? `Доплата за трассу свыше 5 м - блок ${eqIdx + 1} (${eqExtraMeters} м)` 
+            : `Доплата за трассу свыше 5 м (${eqExtraMeters} м)`,
+          quantity: eqExtraMeters,
+          unit: "м",
+          pricePerUnit: EXTRA_TRACE_PRICE_PER_METER,
+          total: eqExtraCost,
+        });
+      }
+
+      if (eqHasCable && eqCablePacks > 0) {
+        items.push({
+          id: itemCounter++,
+          name: equipments.length > 1
+            ? `Кабель-канал - блок ${eqIdx + 1} (${eqCableMeters} м)`
+            : `Кабель-канал (${eqCableMeters} м)`,
+          quantity: eqCablePacks,
+          unit: "упак (2 м)",
+          pricePerUnit: CABLE_CHANNEL_PACK_PRICE,
+          total: eqCableCost,
+        });
+      }
+    });
+
+    if (isComplex && hours > 0) {
       items.push({
         id: itemCounter++,
-        name: equipments.length > 1
-          ? `Кабель-канал - блок ${eqIdx + 1} (${eqCableMeters} м)`
-          : `Кабель-канал`,
-        quantity: eqCablePacks,
-        unit: "упак (2 м)",
-        pricePerUnit: CABLE_CHANNEL_PACK_PRICE,
-        total: eqCableCost,
+        name: "Доплата за сложность",
+        quantity: hours,
+        unit: "час",
+        pricePerUnit: COMPLEXITY_PRICE_PER_HOUR,
+        total: complexityCost,
       });
     }
-  });
-
-  // Complexity (global)
-  if (isComplex && hours > 0) {
-    items.push({
-      id: itemCounter++,
-      name: "Доплата за сложность",
-      quantity: hours,
-      unit: "час",
-      pricePerUnit: COMPLEXITY_PRICE_PER_HOUR,
-      total: complexityCost,
-    });
+  } else {
+    // For maintenance-only, complexity may still apply? Probably not, but keep if set
+    if (isComplex && hours > 0) {
+      items.push({
+        id: itemCounter++,
+        name: "Доплата за сложность (обслуживание)",
+        quantity: hours,
+        unit: "час",
+        pricePerUnit: COMPLEXITY_PRICE_PER_HOUR,
+        total: complexityCost,
+      });
+    }
   }
 
   // Additional items (legacy)
@@ -254,7 +266,7 @@ export function calculateEstimate(inputs: EstimateInputs): EstimateCalculationRe
     });
   }
 
-  // Other expenses - as requested
+  // Other expenses
   let otherExpensesTotal = 0;
   if (inputs.otherExpenses && Array.isArray(inputs.otherExpenses)) {
     inputs.otherExpenses.forEach((exp) => {
@@ -273,9 +285,11 @@ export function calculateEstimate(inputs: EstimateInputs): EstimateCalculationRe
     });
   }
 
-  // Maintenance service - as requested
+  // Maintenance service - separate block
   let maintenanceTotal = 0;
-  if (inputs.maintenance && inputs.maintenance.enabled) {
+  const shouldIncludeMaintenance = contractType === "maintenance" || contractType === "both" || (inputs.maintenance && inputs.maintenance.enabled);
+  
+  if (shouldIncludeMaintenance && inputs.maintenance && inputs.maintenance.enabled) {
     const costPerUnit = Number(inputs.maintenance.costPerUnit) || 0;
     const qty = Math.max(1, Number(inputs.maintenance.quantity) || 1);
     maintenanceTotal = costPerUnit * qty;
@@ -283,7 +297,7 @@ export function calculateEstimate(inputs: EstimateInputs): EstimateCalculationRe
     if (maintenanceTotal > 0) {
       items.push({
         id: itemCounter++,
-        name: `Комплексное обслуживание кондиционера (${qty} ${qty === 1 ? "шт" : qty < 5 ? "шт" : "шт"})`,
+        name: `Комплексное обслуживание кондиционера (${qty} шт × ${costPerUnit.toLocaleString("ru-RU")}₽)`,
         quantity: qty,
         unit: "шт",
         pricePerUnit: costPerUnit,
@@ -292,8 +306,53 @@ export function calculateEstimate(inputs: EstimateInputs): EstimateCalculationRe
     }
   }
 
-  const installationTotal = baseInstallTotal + extraTraceTotal + cableChannelTotal + complexityCost + additionalWorksTotal + otherExpensesTotal + maintenanceTotal;
-  const subtotal = equipmentTotal + installationTotal;
+  // Calculate totals based on contract type
+  let mountingTotal = baseInstallTotal + extraTraceTotal + cableChannelTotal + complexityCost;
+  let installationTotal: number;
+  let subtotal: number;
+
+  if (contractType === "maintenance") {
+    installationTotal = 0;
+    subtotal = maintenanceTotal + otherExpensesTotal + additionalWorksTotal;
+  } else if (contractType === "sale_installation") {
+    installationTotal = mountingTotal + additionalWorksTotal + otherExpensesTotal;
+    subtotal = equipmentTotal + installationTotal;
+  } else {
+    // both
+    installationTotal = mountingTotal + additionalWorksTotal + otherExpensesTotal + maintenanceTotal;
+    subtotal = equipmentTotal + installationTotal;
+  }
+
+  // If still no items (empty), add placeholder
+  if (items.length === 0) {
+    if (contractType === "maintenance") {
+      items.push({
+        id: itemCounter++,
+        name: "Комплексное обслуживание кондиционера (укажите стоимость)",
+        quantity: 1,
+        unit: "шт",
+        pricePerUnit: 0,
+        total: 0,
+      });
+    } else {
+      items.push({
+        id: itemCounter++,
+        name: "Кондиционер (укажите модель)",
+        quantity: 1,
+        unit: "шт",
+        pricePerUnit: 0,
+        total: 0,
+      });
+      items.push({
+        id: itemCounter++,
+        name: "Стандартный монтаж (трасса до 5 м)",
+        quantity: 1,
+        unit: "компл",
+        pricePerUnit: BASE_INSTALLATION_PRICE,
+        total: BASE_INSTALLATION_PRICE,
+      });
+    }
+  }
 
   let discountAmount = 0;
   if (inputs.discountType === "percent" && inputs.discountValue) {
@@ -322,6 +381,7 @@ export function calculateEstimate(inputs: EstimateInputs): EstimateCalculationRe
     items,
     equipmentTotal,
     installationTotal,
+    mountingTotal,
     extraTraceCost: extraTraceTotal,
     extraTraceMeters: extraTraceMetersTotal,
     complexityCost,

@@ -365,13 +365,24 @@ export const ContractGenerator: React.FC<ContractGeneratorProps> = ({
 
       {/* Printable Contract - Exact text as provided */}
       <div className="bg-white rounded-2xl border border-slate-300 shadow-xl p-6 md:p-10 text-slate-900 text-sm leading-relaxed" id="printable-contract">
-        {/* Header */}
+        {/* Header - Dynamic based on contract type */}
         <div className="text-center mb-6">
           <h1 className="text-xl font-bold uppercase tracking-tight">ДОГОВОР</h1>
-          <h2 className="text-lg font-bold uppercase">НА МОНТАЖНЫЕ РАБОТЫ №{contractNumber || "____"}</h2>
+          <h2 className="text-lg font-bold uppercase">
+            {inputs.contractType === "maintenance"
+              ? `НА ОБСЛУЖИВАНИЕ КОНДИЦИОНЕРОВ №${contractNumber || "____"}`
+              : inputs.contractType === "both"
+              ? `НА МОНТАЖНЫЕ РАБОТЫ И ОБСЛУЖИВАНИЕ №${contractNumber || "____"}`
+              : `НА МОНТАЖНЫЕ РАБОТЫ №${contractNumber || "____"}`}
+          </h2>
           <div className="flex justify-end mt-4 text-xs">
             <span>{contractDate || "«__» ________ 20__ г."}</span>
           </div>
+          {inputs.contractType === "maintenance" && (
+            <div className="mt-2 inline-block px-3 py-1 bg-teal-100 text-teal-800 rounded-full text-xs font-bold">
+              Тип: Только обслуживание • {inputs.maintenance?.quantity || 1} кондиционеров • {formatRuble(calculation.maintenanceTotal)}
+            </div>
+          )}
         </div>
 
         <div className="mb-4 text-justify text-xs leading-relaxed">

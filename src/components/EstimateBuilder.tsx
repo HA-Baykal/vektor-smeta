@@ -191,7 +191,85 @@ export const EstimateBuilder: React.FC<EstimateBuilderProps> = ({ inputs, onChan
 
   return (
     <div className="space-y-6">
-      {/* STEP 1: Multiple Equipments */}
+      {/* STEP 0: Contract Type - Separate blocks */}
+      <div className="bg-gradient-to-r from-slate-900 to-blue-900 rounded-2xl p-4 md:p-6 border border-slate-800 shadow-md text-white">
+        <div className="flex items-center gap-2.5 mb-4">
+          <div className="w-8 h-8 rounded-lg bg-white/20 text-white flex items-center justify-center font-bold text-sm">
+            0
+          </div>
+          <div>
+            <h3 className="font-bold text-base">Тип договора — выберите блок работ</h3>
+            <p className="text-xs text-blue-200">Обслуживание может быть отдельным договором без монтажа и продажи</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              updateField("contractType", "sale_installation");
+              // Disable maintenance if was only maintenance
+              if (inputs.maintenance && inputs.maintenance.enabled && inputs.contractType === "maintenance") {
+                updateField("maintenance", { ...inputs.maintenance, enabled: false });
+              }
+            }}
+            className={`p-4 rounded-xl border-2 text-left transition ${
+              (inputs.contractType === "sale_installation" || !inputs.contractType)
+                ? "bg-white text-slate-900 border-white shadow-md"
+                : "bg-white/10 text-white border-white/20 hover:bg-white/20"
+            }`}
+          >
+            <div className="font-bold text-sm">Продажа и монтаж</div>
+            <div className="text-xs mt-1 opacity-80">Оборудование + монтаж, трасса, кабель-канал. Стандартный договор №67</div>
+            <div className="text-2xs mt-2 font-mono">{(inputs.contractType === "sale_installation" || !inputs.contractType) ? "✓ Выбран" : ""}</div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              updateField("contractType", "maintenance");
+              updateField("maintenance", {
+                enabled: true,
+                costPerUnit: inputs.maintenance?.costPerUnit || 2500,
+                quantity: inputs.maintenance?.quantity || 1,
+              });
+            }}
+            className={`p-4 rounded-xl border-2 text-left transition ${
+              inputs.contractType === "maintenance"
+                ? "bg-teal-500 text-white border-teal-400 shadow-md"
+                : "bg-teal-500/20 text-white border-teal-400/30 hover:bg-teal-500/30"
+            }`}
+          >
+            <div className="font-bold text-sm">Только обслуживание</div>
+            <div className="text-xs mt-1 opacity-90">Без продажи и монтажа. Смета и договор только на комплексное обслуживание с перечнем 10 работ</div>
+            <div className="text-2xs mt-2 font-mono">{inputs.contractType === "maintenance" ? "✓ Выбран — отдельный блок" : ""}</div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              updateField("contractType", "both");
+              updateField("maintenance", {
+                enabled: true,
+                costPerUnit: inputs.maintenance?.costPerUnit || 2500,
+                quantity: inputs.maintenance?.quantity || 1,
+              });
+            }}
+            className={`p-4 rounded-xl border-2 text-left transition ${
+              inputs.contractType === "both"
+                ? "bg-amber-400 text-slate-900 border-amber-300 shadow-md"
+                : "bg-amber-500/20 text-white border-amber-400/30 hover:bg-amber-500/30"
+            }`}
+          >
+            <div className="font-bold text-sm">Монтаж + Обслуживание</div>
+            <div className="text-xs mt-1 opacity-90">Комплекс: продажа, монтаж и обслуживание. Всё в одной смете и договоре</div>
+            <div className="text-2xs mt-2 font-mono">{inputs.contractType === "both" ? "✓ Выбран — комплекс" : ""}</div>
+          </button>
+        </div>
+      </div>
+
+      {/* STEP 1: Multiple Equipments - Hide if maintenance only */}
+      {(inputs.contractType !== "maintenance") && (
       <div className="bg-white rounded-2xl p-4 md:p-6 border border-slate-200 shadow-xs">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">
@@ -402,6 +480,7 @@ export const EstimateBuilder: React.FC<EstimateBuilderProps> = ({ inputs, onChan
           </div>
         </div>
       </div>
+      )}
 
       {/* STEP 2: Global params */}
       <div className="bg-white rounded-2xl p-4 md:p-6 border border-slate-200 shadow-xs">
