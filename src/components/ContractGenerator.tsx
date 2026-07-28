@@ -396,20 +396,30 @@ export const ContractGenerator: React.FC<ContractGeneratorProps> = ({
         <div className="space-y-4 text-xs leading-relaxed">
           <div>
             <h3 className="font-bold uppercase text-center">1. ПРЕДМЕТ ДОГОВОРА</h3>
-            <p className="mt-2">
-              1.1. Исполнитель обязуется оказать услуги по поставке и монтажу{" "}
-              <strong>
-                {inputs.equipments && inputs.equipments.length > 1
-                  ? `${inputs.equipments.length} кондиционеров: ${inputs.equipments.map((eq, i) => `${i + 1}) ${eq.modelName || "Сплит-система"} (${formatRuble(eq.equipmentPrice)})`).join("; ")}`
-                  : inputs.modelName || "Сплит-система инверторного типа ___________________"}
-              </strong>{" "}
-              (далее в Договоре «Услуги/Работы»), а Заказчик обязуется принять и оплатить его стоимость.
-              {calculation.equipmentsCount > 1 && (
-                <span className="block mt-1 text-2xs">
-                  Всего единиц оборудования: {calculation.equipmentsCount} шт на сумму {formatRuble(calculation.equipmentTotal)}
-                </span>
-              )}
-            </p>
+            {inputs.contractType === "maintenance" ? (
+              <p className="mt-2">
+                1.1. Исполнитель обязуется оказать услуги по <strong>комплексному обслуживанию кондиционеров</strong> в количестве <strong>{inputs.maintenance?.quantity || 1} шт</strong> по цене <strong>{formatRuble(inputs.maintenance?.costPerUnit || 0)}/шт</strong> на общую сумму <strong>{formatRuble(calculation.maintenanceTotal)}</strong> (далее в Договоре «Услуги/Работы»), а Заказчик обязуется принять и оплатить его стоимость.
+                <span className="block mt-1 text-2xs">Перечень работ по обслуживанию указан в п.1.4</span>
+              </p>
+            ) : (
+              <p className="mt-2">
+                1.1. Исполнитель обязуется оказать услуги по поставке и монтажу{" "}
+                <strong>
+                  {inputs.equipments && inputs.equipments.length > 1
+                    ? `${inputs.equipments.length} кондиционеров: ${inputs.equipments.map((eq, i) => `${i + 1}) ${eq.modelName || "Сплит-система"} (${formatRuble(eq.equipmentPrice)})`).join("; ")}`
+                    : inputs.modelName || "Сплит-система инверторного типа ___________________"}
+                </strong>{" "}
+                {inputs.contractType === "both" && inputs.maintenance?.enabled && (
+                  <span> и комплексному обслуживанию {inputs.maintenance.quantity} кондиционеров ({formatRuble(calculation.maintenanceTotal)})</span>
+                )}{" "}
+                (далее в Договоре «Услуги/Работы»), а Заказчик обязуется принять и оплатить его стоимость.
+                {calculation.equipmentsCount > 1 && (
+                  <span className="block mt-1 text-2xs">
+                    Всего единиц оборудования: {calculation.equipmentsCount} шт на сумму {formatRuble(calculation.equipmentTotal)}
+                  </span>
+                )}
+              </p>
+            )}
             <p className="mt-1">
               1.2. Место оказания Услуг: {customerAddress ? <strong>{customerAddress}{customerApartment ? `, ${customerApartment}` : ""}</strong> : "г. Иркутск, ул. Советская, д. 176/187, кв________"}
             </p>

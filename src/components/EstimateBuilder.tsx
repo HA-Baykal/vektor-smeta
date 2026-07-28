@@ -40,6 +40,11 @@ export const EstimateBuilder: React.FC<EstimateBuilderProps> = ({ inputs, onChan
     if (inputs.equipments && inputs.equipments.length > 0) {
       return inputs.equipments;
     }
+    // If main equipment is empty and not maintenance-only, return empty for initially empty estimate
+    const hasMain = (inputs.modelName && inputs.modelName.trim() !== "") || (inputs.equipmentPrice && inputs.equipmentPrice > 0);
+    if (!hasMain && inputs.contractType !== "maintenance") {
+      return [];
+    }
     // Convert main equipment to array for unified handling
     return [
       {
@@ -207,13 +212,13 @@ export const EstimateBuilder: React.FC<EstimateBuilderProps> = ({ inputs, onChan
           <button
             type="button"
             onClick={() => {
-              updateField("contractType", "sale_installation");
-              // Disable maintenance if was only maintenance
-              if (inputs.maintenance && inputs.maintenance.enabled && inputs.contractType === "maintenance") {
-                updateField("maintenance", { ...inputs.maintenance, enabled: false });
-              }
+              onChange({
+                ...inputs,
+                contractType: "sale_installation",
+                maintenance: { ...(inputs.maintenance || { costPerUnit: 2500, quantity: 1 }), enabled: false },
+              });
             }}
-            className={`p-4 rounded-xl border-2 text-left transition ${
+            className={`p-4 rounded-xl border-2 text-left transition cursor-pointer ${
               (inputs.contractType === "sale_installation" || !inputs.contractType)
                 ? "bg-white text-slate-900 border-white shadow-md"
                 : "bg-white/10 text-white border-white/20 hover:bg-white/20"
@@ -227,14 +232,17 @@ export const EstimateBuilder: React.FC<EstimateBuilderProps> = ({ inputs, onChan
           <button
             type="button"
             onClick={() => {
-              updateField("contractType", "maintenance");
-              updateField("maintenance", {
-                enabled: true,
-                costPerUnit: inputs.maintenance?.costPerUnit || 2500,
-                quantity: inputs.maintenance?.quantity || 1,
+              onChange({
+                ...inputs,
+                contractType: "maintenance",
+                maintenance: {
+                  enabled: true,
+                  costPerUnit: inputs.maintenance?.costPerUnit || 2500,
+                  quantity: inputs.maintenance?.quantity || 1,
+                },
               });
             }}
-            className={`p-4 rounded-xl border-2 text-left transition ${
+            className={`p-4 rounded-xl border-2 text-left transition cursor-pointer ${
               inputs.contractType === "maintenance"
                 ? "bg-teal-500 text-white border-teal-400 shadow-md"
                 : "bg-teal-500/20 text-white border-teal-400/30 hover:bg-teal-500/30"
@@ -248,14 +256,17 @@ export const EstimateBuilder: React.FC<EstimateBuilderProps> = ({ inputs, onChan
           <button
             type="button"
             onClick={() => {
-              updateField("contractType", "both");
-              updateField("maintenance", {
-                enabled: true,
-                costPerUnit: inputs.maintenance?.costPerUnit || 2500,
-                quantity: inputs.maintenance?.quantity || 1,
+              onChange({
+                ...inputs,
+                contractType: "both",
+                maintenance: {
+                  enabled: true,
+                  costPerUnit: inputs.maintenance?.costPerUnit || 2500,
+                  quantity: inputs.maintenance?.quantity || inputs.equipments?.length || 1,
+                },
               });
             }}
-            className={`p-4 rounded-xl border-2 text-left transition ${
+            className={`p-4 rounded-xl border-2 text-left transition cursor-pointer ${
               inputs.contractType === "both"
                 ? "bg-amber-400 text-slate-900 border-amber-300 shadow-md"
                 : "bg-amber-500/20 text-white border-amber-400/30 hover:bg-amber-500/30"
@@ -303,6 +314,23 @@ export const EstimateBuilder: React.FC<EstimateBuilderProps> = ({ inputs, onChan
         )}
 
         <div className="space-y-5">
+          {equipments.length === 0 && (
+            <div className="p-6 bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl text-center">
+              <div className="w-12 h-12 mx-auto rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mb-3">
+                <Plus className="w-6 h-6" />
+              </div>
+              <div className="font-bold text-slate-800">Смета изначально пустая</div>
+              <div className="text-xs text-slate-500 mt-1 max-w-md mx-auto">Добавьте первый кондиционер по ссылке (Авито, Яндекс.Маркет, Русклимат, Даичи) или вручную. Можно добавить 2-3 кондиционера в один договор.</div>
+              <button
+                type="button"
+                onClick={addEquipment}
+                className="mt-4 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold flex items-center gap-2 mx-auto"
+              >
+                <Plus className="w-4 h-4" />
+                Добавить первый кондиционер
+              </button>
+            </div>
+          )}
           {equipments.map((eq, idx) => {
             const eqTrace = eq.traceLength || 4;
             const eqCableMeters = eq.hasCableChannel
