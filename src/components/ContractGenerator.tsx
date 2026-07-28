@@ -518,6 +518,7 @@ export const ContractGenerator: React.FC<ContractGeneratorProps> = ({
 
           <div>
             <h3 className="font-bold uppercase text-center">10. КОНТАКТНЫЕ ЛИЦА СТОРОН</h3>
+            <p className="mt-1">Исполнитель работ Чебанов Дмитрий Юрьевич т. +7(914) 914-66-06</p>
             <p className="mt-1">Исполнитель работ Кокорин Антон Олегович т. +7 9086401166</p>
           </div>
 

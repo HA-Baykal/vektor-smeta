@@ -181,6 +181,9 @@ export async function exportContractToDocx(
             alignment: AlignmentType.CENTER,
           }),
           new Paragraph({
+            text: "Исполнитель работ Чебанов Дмитрий Юрьевич т. +7(914) 914-66-06",
+          }),
+          new Paragraph({
             text: "Исполнитель работ Кокорин Антон Олегович т. +7 9086401166",
           }),
           new Paragraph({ text: "" }),
