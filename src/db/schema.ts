@@ -15,6 +15,9 @@ export const estimates = pgTable("estimates", {
   cableChannelMeters: integer("cable_channel_meters").notNull().default(0),
   cableChannelPacks: integer("cable_channel_packs").notNull().default(0),
   equipmentsJson: text("equipments_json").default("[]"),
+  otherExpensesJson: text("other_expenses_json").default("[]"),
+  maintenanceJson: text("maintenance_json").default("{}"),
+  contractType: text("contract_type").default("sale_installation"),
   additionalItemsJson: text("additional_items_json").default("[]"),
   discountType: text("discount_type").default("none"), // 'none' | 'percent' | 'fixed'
   discountValue: integer("discount_value").default(0),

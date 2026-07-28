@@ -405,6 +405,33 @@ export const ContractGenerator: React.FC<ContractGeneratorProps> = ({
             <p className="mt-1">
               1.3. Оказание Услуг осуществляется Исполнителем в соответствии с законодательством Российской Федерации, требованиями иных нормативных правовых актов, регулирующих порядок предоставления такого вида Услуг, устанавливающих требования к качеству такого вида Услуг, в соответствии с условиями договора.
             </p>
+            {inputs.maintenance && inputs.maintenance.enabled && (
+              <div className="mt-3 p-3 bg-teal-50 border border-teal-200 rounded-xl">
+                <p className="font-bold">1.4. Комплексное обслуживание кондиционера ({inputs.maintenance.quantity} шт × {formatRuble(inputs.maintenance.costPerUnit)} = {formatRuble(calculation.maintenanceTotal)}), включающее:</p>
+                <ul className="list-disc ml-5 mt-1 space-y-0.5 text-2xs">
+                  <li>Визуальный осмотр внутреннего и наружного блока</li>
+                  <li>Чистка фильтров, теплообменников, вентилятора</li>
+                  <li>Мойка корпусов и лопастей внутреннего блока</li>
+                  <li>Мойка корпуса и лопастей наружного блока</li>
+                  <li>Дезинфекция внутреннего блока (антисептик, устранение запахов, бактерий, плесени)</li>
+                  <li>Проверка давления в системе, выявление утечек</li>
+                  <li>Дозаправка фреона при необходимости (до 200 г/блок без доплаты)</li>
+                  <li>Проверка дренажной системы и электроподключений</li>
+                  <li>Тестирование работы всех режимов</li>
+                  <li>Подъём к наружным блокам на автовышке</li>
+                </ul>
+              </div>
+            )}
+            {inputs.otherExpenses && inputs.otherExpenses.length > 0 && (
+              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                <p className="font-bold">1.5. Прочие расходы ({inputs.otherExpenses.length} поз. на сумму {formatRuble(calculation.otherExpensesTotal)}):</p>
+                <ul className="list-disc ml-5 mt-1 space-y-0.5 text-2xs">
+                  {inputs.otherExpenses.map((exp, i) => (
+                    <li key={i}>{exp.description}: {formatRuble(exp.amount)}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
           <div>

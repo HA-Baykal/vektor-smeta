@@ -20,6 +20,19 @@ export interface EquipmentInput {
   cableChannelMeters?: number;
 }
 
+export interface OtherExpense {
+  id?: string;
+  description: string;
+  amount: number;
+}
+
+export interface MaintenanceService {
+  enabled: boolean;
+  costPerUnit: number;
+  quantity: number;
+  description?: string;
+}
+
 export interface EstimateInputs {
   modelName: string;
   equipmentPrice: number;
@@ -33,6 +46,9 @@ export interface EstimateInputs {
   cableChannelMeters?: number;
   cableChannelPacks?: number;
   equipments?: EquipmentInput[];
+  otherExpenses?: OtherExpense[];
+  maintenance?: MaintenanceService;
+  contractType?: "sale_installation" | "maintenance" | "both";
   additionalItems?: Array<{ name: string; price: number; quantity: number; unit: string }>;
   discountType?: "none" | "percent" | "fixed";
   discountValue?: number;
@@ -54,6 +70,8 @@ export interface EstimateCalculationResult {
   cableChannelCost: number;
   cableChannelPacks: number;
   cableChannelMeters: number;
+  otherExpensesTotal: number;
+  maintenanceTotal: number;
   additionalWorksTotal: number;
   subtotal: number;
   discountAmount: number;
@@ -219,7 +237,7 @@ export function calculateEstimate(inputs: EstimateInputs): EstimateCalculationRe
     });
   }
 
-  // Additional items
+  // Additional items (legacy)
   let additionalWorksTotal = 0;
   if (inputs.additionalItems && Array.isArray(inputs.additionalItems)) {
     inputs.additionalItems.forEach((add) => {
@@ -236,7 +254,45 @@ export function calculateEstimate(inputs: EstimateInputs): EstimateCalculationRe
     });
   }
 
-  const installationTotal = baseInstallTotal + extraTraceTotal + cableChannelTotal + complexityCost + additionalWorksTotal;
+  // Other expenses - as requested
+  let otherExpensesTotal = 0;
+  if (inputs.otherExpenses && Array.isArray(inputs.otherExpenses)) {
+    inputs.otherExpenses.forEach((exp) => {
+      const amount = Number(exp.amount) || 0;
+      if (amount > 0 && exp.description && exp.description.trim() !== "") {
+        otherExpensesTotal += amount;
+        items.push({
+          id: itemCounter++,
+          name: `Прочие расходы: ${exp.description}`,
+          quantity: 1,
+          unit: "усл",
+          pricePerUnit: amount,
+          total: amount,
+        });
+      }
+    });
+  }
+
+  // Maintenance service - as requested
+  let maintenanceTotal = 0;
+  if (inputs.maintenance && inputs.maintenance.enabled) {
+    const costPerUnit = Number(inputs.maintenance.costPerUnit) || 0;
+    const qty = Math.max(1, Number(inputs.maintenance.quantity) || 1);
+    maintenanceTotal = costPerUnit * qty;
+    
+    if (maintenanceTotal > 0) {
+      items.push({
+        id: itemCounter++,
+        name: `Комплексное обслуживание кондиционера (${qty} ${qty === 1 ? "шт" : qty < 5 ? "шт" : "шт"})`,
+        quantity: qty,
+        unit: "шт",
+        pricePerUnit: costPerUnit,
+        total: maintenanceTotal,
+      });
+    }
+  }
+
+  const installationTotal = baseInstallTotal + extraTraceTotal + cableChannelTotal + complexityCost + additionalWorksTotal + otherExpensesTotal + maintenanceTotal;
   const subtotal = equipmentTotal + installationTotal;
 
   let discountAmount = 0;
@@ -272,6 +328,8 @@ export function calculateEstimate(inputs: EstimateInputs): EstimateCalculationRe
     cableChannelCost: cableChannelTotal,
     cableChannelPacks: cableChannelPacksTotal,
     cableChannelMeters: cableChannelMetersTotal,
+    otherExpensesTotal,
+    maintenanceTotal,
     additionalWorksTotal,
     subtotal,
     discountAmount,

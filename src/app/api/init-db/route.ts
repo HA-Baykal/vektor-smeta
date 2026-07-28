@@ -43,6 +43,9 @@ export async function GET(req: NextRequest) {
         cable_channel_meters INTEGER NOT NULL DEFAULT 0,
         cable_channel_packs INTEGER NOT NULL DEFAULT 0,
         equipments_json TEXT DEFAULT '[]',
+        other_expenses_json TEXT DEFAULT '[]',
+        maintenance_json TEXT DEFAULT '{}',
+        contract_type TEXT DEFAULT 'sale_installation',
         additional_items_json TEXT DEFAULT '[]',
         discount_type TEXT DEFAULT 'none',
         discount_value INTEGER DEFAULT 0,
@@ -62,6 +65,9 @@ export async function GET(req: NextRequest) {
     // Add missing columns for existing tables (for migrations)
     await pool.query(`ALTER TABLE estimates ADD COLUMN IF NOT EXISTS cable_channel_meters INTEGER NOT NULL DEFAULT 0;`);
     await pool.query(`ALTER TABLE estimates ADD COLUMN IF NOT EXISTS equipments_json TEXT DEFAULT '[]';`);
+    await pool.query(`ALTER TABLE estimates ADD COLUMN IF NOT EXISTS other_expenses_json TEXT DEFAULT '[]';`);
+    await pool.query(`ALTER TABLE estimates ADD COLUMN IF NOT EXISTS maintenance_json TEXT DEFAULT '{}';`);
+    await pool.query(`ALTER TABLE estimates ADD COLUMN IF NOT EXISTS contract_type TEXT DEFAULT 'sale_installation';`);
     await pool.query(`ALTER TABLE estimates ADD COLUMN IF NOT EXISTS discount_type TEXT DEFAULT 'none';`);
     await pool.query(`ALTER TABLE estimates ADD COLUMN IF NOT EXISTS discount_value INTEGER DEFAULT 0;`);
     await pool.query(`ALTER TABLE estimates ADD COLUMN IF NOT EXISTS vat_type TEXT DEFAULT 'none';`);

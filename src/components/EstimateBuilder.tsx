@@ -475,12 +475,216 @@ export const EstimateBuilder: React.FC<EstimateBuilderProps> = ({ inputs, onChan
         </div>
       </div>
 
-      {/* STEP 3: Client */}
+      {/* STEP 3: Other Expenses */}
+      <div className="bg-white rounded-2xl p-4 md:p-6 border border-slate-200 shadow-xs">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-sm">3</div>
+            <div>
+              <h3 className="font-bold text-base text-slate-900">Шаг 3. Прочие расходы</h3>
+              <p className="text-xs text-slate-500">Укажите на что расходы и сумму — прибавляется к общей смете</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const current = inputs.otherExpenses || [];
+              updateField("otherExpenses", [...current, { description: "", amount: 0 }]);
+            }}
+            className="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5"
+          >
+            <Plus className="w-4 h-4" />
+            Добавить расход
+          </button>
+        </div>
+
+        {(inputs.otherExpenses && inputs.otherExpenses.length > 0) ? (
+          <div className="space-y-3">
+            {inputs.otherExpenses.map((exp, idx) => (
+              <div key={idx} className="flex flex-col md:flex-row gap-2 p-3 bg-amber-50/50 border border-amber-200 rounded-xl">
+                <div className="flex-1">
+                  <label className="block text-2xs font-bold text-slate-700 mb-1">На что расходы *</label>
+                  <input
+                    type="text"
+                    value={exp.description}
+                    onChange={(e) => {
+                      const newExps = [...(inputs.otherExpenses || [])];
+                      newExps[idx] = { ...newExps[idx], description: e.target.value };
+                      updateField("otherExpenses", newExps);
+                    }}
+                    placeholder="Например: Доставка оборудования, Автовышка, Демонтаж старого блока"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                  />
+                </div>
+                <div className="w-full md:w-36">
+                  <label className="block text-2xs font-bold text-slate-700 mb-1">Сумма (₽) *</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={exp.amount || ""}
+                    onChange={(e) => {
+                      const newExps = [...(inputs.otherExpenses || [])];
+                      newExps[idx] = { ...newExps[idx], amount: parseInt(e.target.value, 10) || 0 };
+                      updateField("otherExpenses", newExps);
+                    }}
+                    className="w-full px-3 py-2 bg-white border border-amber-300 rounded-xl text-sm font-bold font-mono text-slate-900 focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                    placeholder="1500"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newExps = (inputs.otherExpenses || []).filter((_, i) => i !== idx);
+                      updateField("otherExpenses", newExps);
+                    }}
+                    className="p-2.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl border border-transparent hover:border-rose-200"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+            <div className="text-xs font-bold text-amber-800 bg-amber-100 p-2 rounded-lg">
+              Итого прочие расходы: {(inputs.otherExpenses || []).reduce((sum, e) => sum + (Number(e.amount) || 0), 0).toLocaleString("ru-RU")} ₽ — прибавляется к общей смете автоматически
+            </div>
+          </div>
+        ) : (
+          <div className="p-4 bg-slate-50 border border-dashed border-slate-300 rounded-xl text-center">
+            <div className="text-xs text-slate-500">Прочих расходов пока нет. Нажмите "Добавить расход" если нужно учесть доставку, автовышку, демонтаж и т.д.</div>
+          </div>
+        )}
+      </div>
+
+      {/* STEP 4: Maintenance Service */}
+      <div className="bg-white rounded-2xl p-4 md:p-6 border border-slate-200 shadow-xs">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-sm">4</div>
+            <div>
+              <h3 className="font-bold text-base text-slate-900">Шаг 4. Обслуживание кондиционера</h3>
+              <p className="text-xs text-slate-500">Отдельный пункт договора — стоимость за единицу вручную, перечень работ фиксированный</p>
+            </div>
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={!!(inputs.maintenance && inputs.maintenance.enabled)}
+              onChange={(e) => {
+                const enabled = e.target.checked;
+                updateField("maintenance", {
+                  enabled,
+                  costPerUnit: inputs.maintenance?.costPerUnit || 2500,
+                  quantity: inputs.maintenance?.quantity || 1,
+                  description: inputs.maintenance?.description || "",
+                });
+                if (enabled) {
+                  updateField("contractType", "both");
+                } else {
+                  updateField("contractType", "sale_installation");
+                }
+              }}
+              className="w-4 h-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+            />
+            <span className="text-xs font-bold text-slate-700">Включить обслуживание в договор</span>
+          </label>
+        </div>
+
+        {inputs.maintenance && inputs.maintenance.enabled ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-teal-50 border border-teal-200 rounded-xl">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Стоимость за единицу (₽) *</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={inputs.maintenance.costPerUnit || ""}
+                  onChange={(e) => {
+                    updateField("maintenance", {
+                      ...inputs.maintenance!,
+                      costPerUnit: parseInt(e.target.value, 10) || 0,
+                    });
+                  }}
+                  className="w-full px-3 py-2 bg-white border border-teal-300 rounded-xl text-sm font-bold font-mono text-teal-900 focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  placeholder="2500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Количество кондиционеров *</label>
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={() => updateField("maintenance", { ...inputs.maintenance!, quantity: Math.max(1, (inputs.maintenance?.quantity || 1) - 1) })} className="w-8 h-8 rounded bg-slate-200 font-bold">-</button>
+                  <input
+                    type="number"
+                    min={1}
+                    value={inputs.maintenance.quantity || 1}
+                    onChange={(e) => updateField("maintenance", { ...inputs.maintenance!, quantity: parseInt(e.target.value, 10) || 1 })}
+                    className="flex-1 px-3 py-2 bg-white border border-teal-300 rounded-xl text-sm font-bold font-mono text-center"
+                  />
+                  <button type="button" onClick={() => updateField("maintenance", { ...inputs.maintenance!, quantity: (inputs.maintenance?.quantity || 1) + 1 })} className="w-8 h-8 rounded bg-slate-200 font-bold">+</button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Итого за обслуживание</label>
+                <div className="px-3 py-2 bg-white border border-teal-200 rounded-xl text-sm font-bold font-mono text-teal-900">
+                  {((inputs.maintenance.costPerUnit || 0) * (inputs.maintenance.quantity || 1)).toLocaleString("ru-RU")} ₽
+                </div>
+                <div className="text-2xs text-teal-700 mt-1">{inputs.maintenance.costPerUnit || 0} ₽ × {inputs.maintenance.quantity || 1} шт</div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+              <div className="font-bold text-xs text-slate-800 mb-2">Перечень работ по комплексному обслуживанию (входит в договор):</div>
+              <div className="grid grid-cols-1 text-2xs text-slate-700 space-y-1.5">
+                <div className="flex gap-2"><span className="text-teal-600 font-bold">•</span><span>Визуальный осмотр внутреннего и наружного блока</span></div>
+                <div className="flex gap-2"><span className="text-teal-600 font-bold">•</span><span>Чистка фильтров, теплообменников, вентилятора</span></div>
+                <div className="flex gap-2"><span className="text-teal-600 font-bold">•</span><span>Мойка корпусов и лопастей внутреннего блока</span></div>
+                <div className="flex gap-2"><span className="text-teal-600 font-bold">•</span><span>Мойка корпуса и лопастей наружного блока</span></div>
+                <div className="flex gap-2"><span className="text-teal-600 font-bold">•</span><span>Дезинфекция внутреннего блока (антисептик, устранение запахов, бактерий, плесени)</span></div>
+                <div className="flex gap-2"><span className="text-teal-600 font-bold">•</span><span>Проверка давления в системе, выявление утечек</span></div>
+                <div className="flex gap-2"><span className="text-teal-600 font-bold">•</span><span>Дозаправка фреона при необходимости (до 200 г/блок без доплаты)</span></div>
+                <div className="flex gap-2"><span className="text-teal-600 font-bold">•</span><span>Проверка дренажной системы и электроподключений</span></div>
+                <div className="flex gap-2"><span className="text-teal-600 font-bold">•</span><span>Тестирование работы всех режимов</span></div>
+                <div className="flex gap-2"><span className="text-teal-600 font-bold">•</span><span>Подъём к наружным блокам на автовышке</span></div>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => updateField("contractType", "maintenance")}
+                className={`px-3 py-2 rounded-xl text-xs font-bold border ${inputs.contractType === "maintenance" ? "bg-teal-600 text-white border-teal-600" : "bg-white text-slate-700 border-slate-300"}`}
+              >
+                Только обслуживание
+              </button>
+              <button
+                type="button"
+                onClick={() => updateField("contractType", "both")}
+                className={`px-3 py-2 rounded-xl text-xs font-bold border ${inputs.contractType === "both" ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-700 border-slate-300"}`}
+              >
+                Монтаж + Обслуживание
+              </button>
+              <button
+                type="button"
+                onClick={() => updateField("contractType", "sale_installation")}
+                className={`px-3 py-2 rounded-xl text-xs font-bold border ${inputs.contractType === "sale_installation" ? "bg-slate-800 text-white border-slate-800" : "bg-white text-slate-700 border-slate-300"}`}
+              >
+                Только монтаж/продажа
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="p-4 bg-slate-50 border border-dashed border-slate-300 rounded-xl text-center">
+            <div className="text-xs text-slate-500">Обслуживание не включено. Включите чекбокс выше, если нужно добавить в договор комплексное обслуживание кондиционеров.</div>
+          </div>
+        )}
+      </div>
+
+      {/* STEP 5: Client */}
       <div className="bg-white rounded-2xl p-4 md:p-6 border border-slate-200 shadow-xs">
         <div className="flex items-center gap-2.5 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-sm">3</div>
+          <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-sm">5</div>
           <div>
-            <h3 className="font-bold text-base text-slate-900">Шаг 3. Заказчик (пусто по умолчанию)</h3>
+            <h3 className="font-bold text-base text-slate-900">Шаг 5. Заказчик (пусто по умолчанию)</h3>
             <p className="text-xs text-slate-500">Заполните вручную для договора</p>
           </div>
         </div>
