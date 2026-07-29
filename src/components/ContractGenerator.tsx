@@ -47,6 +47,7 @@ export const ContractGenerator: React.FC<ContractGeneratorProps> = ({
   const [prepaymentAmount, setPrepaymentAmount] = useState<number>(0);
   const [finalPaymentAmount, setFinalPaymentAmount] = useState<number>(0);
   const [totalContractAmount, setTotalContractAmount] = useState<number>(calculation.finalTotal || 0);
+  const [maintenancePrepaymentPercent, setMaintenancePrepaymentPercent] = useState<number>(100);
 
   // Payment method: card (no tax) or bank (6% auto)
   const [paymentMethod, setPaymentMethod] = useState<"card" | "bank">(
@@ -65,13 +66,20 @@ export const ContractGenerator: React.FC<ContractGeneratorProps> = ({
     setTotalContractAmount(calculation.finalTotal || 0);
   }, [calculation.finalTotal]);
 
-  // Auto-calculate prepayment and final when equipment/consumables change
+  // Auto-calculate prepayment and final - different for maintenance vs sale
   useEffect(() => {
-    const prepayment = (equipmentCostManual || 0) + (consumablesCostManual || 0);
-    setPrepaymentAmount(prepayment);
-    const final = Math.max(0, (totalContractAmount || 0) - prepayment);
-    setFinalPaymentAmount(final);
-  }, [equipmentCostManual, consumablesCostManual, totalContractAmount]);
+    if (inputs.contractType === "maintenance") {
+      const maintTotal = calculation.maintenanceTotal || 0;
+      const prepay = Math.round((maintTotal * (maintenancePrepaymentPercent || 0)) / 100);
+      setPrepaymentAmount(prepay);
+      setFinalPaymentAmount(Math.max(0, (totalContractAmount || 0) - prepay));
+    } else {
+      const prepayment = (equipmentCostManual || 0) + (consumablesCostManual || 0);
+      setPrepaymentAmount(prepayment);
+      const final = Math.max(0, (totalContractAmount || 0) - prepayment);
+      setFinalPaymentAmount(final);
+    }
+  }, [equipmentCostManual, consumablesCostManual, totalContractAmount, inputs.contractType, calculation.maintenanceTotal, maintenancePrepaymentPercent]);
 
   // When consumables change, update inputs for history? Not necessary
 
@@ -461,15 +469,39 @@ export const ContractGenerator: React.FC<ContractGeneratorProps> = ({
               2.1. Общая стоимость Договора составляет <strong>{formatRuble(totalContractAmount)}</strong> (<strong>{totalInWords}</strong>).
             </p>
             <p className="mt-1">
-              2.2. Заказчик вносит предоплату 100% от стоимости кондиционера и расходных материалов в размере{" "}
-              <strong>{formatRuble(prepaymentAmount)}</strong> (<strong>{prepaymentInWords}</strong>) в течение 3 (трех) рабочих дней с момента заключения Договора путем перечисления денежных средств по номеру телефона Исполнителя <strong>+7-999-420-11-19, Т-Банк</strong>
-              {paymentMethod === "bank" && (
-                <span> (при оплате по р/с +6% УСН автоматически учтено: {formatRuble(calculation.vatAmount)})</span>
+              {inputs.contractType === "maintenance" ? (
+                <>
+                  2.2. Заказчик вносит предоплату{" "}
+                  <strong>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={maintenancePrepaymentPercent}
+                      onChange={(e) => setMaintenancePrepaymentPercent(parseInt(e.target.value, 10) || 0)}
+                      className="w-14 px-1 py-0.5 bg-white border border-teal-300 rounded text-xs font-bold text-center inline-block mx-1"
+                    />
+                    %
+                  </strong>{" "}
+                  на обслуживание в размере <strong>{formatRuble(prepaymentAmount)}</strong> (<strong>{prepaymentInWords}</strong>) в течение 3 (трех) рабочих дней с момента заключения Договора путем перечисления денежных средств по номеру телефона Исполнителя <strong>+7-999-420-11-19, Т-Банк</strong>
+                  {paymentMethod === "bank" && (
+                    <span> (при оплате по р/с +6% УСН автоматически учтено: {formatRuble(calculation.vatAmount)})</span>
+                  )}
+                  .
+                </>
+              ) : (
+                <>
+                  2.2. Заказчик вносит предоплату 100% от стоимости кондиционера и расходных материалов в размере{" "}
+                  <strong>{formatRuble(prepaymentAmount)}</strong> (<strong>{prepaymentInWords}</strong>) в течение 3 (трех) рабочих дней с момента заключения Договора путем перечисления денежных средств по номеру телефона Исполнителя <strong>+7-999-420-11-19, Т-Банк</strong>
+                  {paymentMethod === "bank" && (
+                    <span> (при оплате по р/с +6% УСН автоматически учтено: {formatRuble(calculation.vatAmount)})</span>
+                  )}
+                  {equipmentCostManual > 0 && (
+                    <span> (в т.ч. кондиционер {formatRuble(equipmentCostManual)} + расходники {formatRuble(consumablesCostManual)})</span>
+                  )}
+                  .
+                </>
               )}
-              {equipmentCostManual > 0 && (
-                <span> (в т.ч. кондиционер {formatRuble(equipmentCostManual)} + расходники {formatRuble(consumablesCostManual)})</span>
-              )}
-              .
             </p>
             <p className="mt-1">
               2.3. Заказчик производит окончательный расчет в размере <strong>{formatRuble(finalPaymentAmount)}</strong> (<strong>{finalInWords}</strong>) в течение 3 (трех) рабочих дней с момента приемки результата Работ Заказчиком и подписания сторонами Акта приемки выполненных работ.
