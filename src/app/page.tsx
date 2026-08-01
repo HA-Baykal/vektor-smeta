@@ -7,6 +7,7 @@ import { EstimateTable } from "@/components/EstimateTable";
 import { ChatAssistant } from "@/components/ChatAssistant";
 import { EstimateHistory } from "@/components/EstimateHistory";
 import { ContractGenerator } from "@/components/ContractGenerator";
+import { OtherWorksTab } from "@/components/OtherWorksTab";
 import { AuthGuard } from "@/components/AuthGuard";
 import { TelegramProvider, useTelegram } from "@/components/TelegramProvider";
 import { AuditLogViewer } from "@/components/AuditLogViewer";
@@ -27,7 +28,7 @@ import {
 function MainApp() {
   const { isAdmin } = useTelegram();
   const [activeTab, setActiveTab] = useState<
-    "builder" | "contract" | "chat" | "history"
+    "builder" | "contract" | "other_works" | "chat" | "history"
   >("builder");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isPdfOpen, setIsPdfOpen] = useState(false);
@@ -166,6 +167,18 @@ function MainApp() {
           </button>
 
           <button
+            onClick={() => setActiveTab("other_works")}
+            className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 transition cursor-pointer shrink-0 ${
+              activeTab === "other_works"
+                ? "bg-amber-600 text-white shadow-md shadow-amber-600/20"
+                : "bg-white text-slate-700 hover:bg-slate-200/80 border border-slate-200"
+            }`}
+          >
+            <FileText className="w-4 h-4 text-amber-600" />
+            Другие виды работ
+          </button>
+
+          <button
             onClick={() => setActiveTab("history")}
             className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 transition cursor-pointer shrink-0 ${
               activeTab === "history"
@@ -203,6 +216,12 @@ function MainApp() {
                   <span>ИИ-Ассистент (Чат)</span>
                 </>
               )}
+              {activeTab === "other_works" && (
+                <>
+                  <FileText className="w-4 h-4 text-amber-600" />
+                  <span>Другие виды работ</span>
+                </>
+              )}
               {activeTab === "history" && (
                 <>
                   <History className="w-4 h-4 text-blue-400" />
@@ -238,6 +257,17 @@ function MainApp() {
                 }`}
               >
                 <FileText className="w-4 h-4 text-amber-500" /> Договор на оказание услуг
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("other_works");
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`w-full px-4 py-3 text-left text-sm font-semibold flex items-center gap-3 border-b border-slate-100 ${
+                  activeTab === "other_works" ? "bg-amber-50 text-amber-700" : "text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                <FileText className="w-4 h-4 text-amber-600" /> Другие виды работ
               </button>
               <button
                 onClick={() => {
@@ -289,6 +319,12 @@ function MainApp() {
             onChangeInputs={setInputs}
             onSaveToDatabase={handleSaveToDatabase}
           />
+        )}
+
+        {activeTab === "other_works" && (
+          <div>
+            <OtherWorksTab />
+          </div>
         )}
 
         {activeTab === "chat" && (

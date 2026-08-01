@@ -7,13 +7,19 @@ export async function POST(req: NextRequest) {
     const data: EstimateInputs = await req.json();
 
     const calculation = calculateEstimate(data);
-    const currentDate =
-      data.installationDate ||
-      new Date().toLocaleDateString("ru-RU", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      });
+    const estimateDate = new Date().toLocaleDateString("ru-RU", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+    const installationDate = data.installationDate
+      ? new Date(data.installationDate).toLocaleDateString("ru-RU", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        })
+      : "По согласованию";
+    const currentDate = estimateDate;
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = "ИИ-Ассистент Сметчик";

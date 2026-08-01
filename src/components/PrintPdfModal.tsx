@@ -116,9 +116,9 @@ export const PrintPdfModal: React.FC<PrintPdfModalProps> = ({
                 </p>
               </div>
               <div className="text-right text-sm">
-                <div className="font-bold text-slate-800 text-base">ООО «Климат Профи»</div>
-                <div className="text-slate-500 text-xs">Монтаж и сервис систем кондиционирования</div>
-                <div className="text-slate-700 mt-2 font-medium">Дата: {currentDate}</div>
+                <div className="font-bold text-slate-800 text-base">Вектор Комфорта</div>
+                <div className="text-slate-500 text-xs">строительно монтажная компания</div>
+                <div className="text-slate-700 mt-2 font-medium">Дата: {new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" })}</div>
               </div>
             </div>
           </div>
