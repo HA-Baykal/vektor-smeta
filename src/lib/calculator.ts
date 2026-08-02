@@ -110,6 +110,7 @@ export function calculateEstimate(inputs: EstimateInputs): EstimateCalculationRe
       traceLength: eq.traceLength !== undefined ? Math.max(1, Number(eq.traceLength) || 4) : Math.max(1, Number(inputs.traceLength) || 4),
       hasCableChannel: eq.hasCableChannel !== undefined ? Boolean(eq.hasCableChannel) : Boolean(inputs.hasCableChannel),
       cableChannelMeters: eq.cableChannelMeters !== undefined ? Number(eq.cableChannelMeters) : (inputs.cableChannelMeters !== undefined ? Number(inputs.cableChannelMeters) : undefined),
+      hasInstallation: eq.hasInstallation !== undefined ? Boolean(eq.hasInstallation) : true,
     }));
   } else {
     // Single equipment fallback
@@ -124,6 +125,7 @@ export function calculateEstimate(inputs: EstimateInputs): EstimateCalculationRe
         traceLength: Math.max(1, Number(inputs.traceLength) || 4),
         hasCableChannel: Boolean(inputs.hasCableChannel),
         cableChannelMeters: inputs.cableChannelMeters !== undefined ? Number(inputs.cableChannelMeters) : undefined,
+        hasInstallation: true,
       }];
       // For maintenance-only, if no equipment name/price, make empty list
       if (isMaintenanceOnly && !hasEquip) {

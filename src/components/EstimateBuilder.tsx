@@ -56,6 +56,7 @@ export const EstimateBuilder: React.FC<EstimateBuilderProps> = ({ inputs, onChan
         traceLength: inputs.traceLength || 4,
         hasCableChannel: inputs.hasCableChannel || false,
         cableChannelMeters: inputs.cableChannelMeters || 0,
+        hasInstallation: true,
       },
     ];
   };
@@ -148,6 +149,7 @@ export const EstimateBuilder: React.FC<EstimateBuilderProps> = ({ inputs, onChan
       traceLength: inputs.traceLength || 4,
       hasCableChannel: false,
       cableChannelMeters: 0,
+      hasInstallation: true,
     };
     setEquipments([...eqs, newEq]);
   };
