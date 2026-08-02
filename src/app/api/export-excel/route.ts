@@ -41,10 +41,10 @@ export async function POST(req: NextRequest) {
       { key: "sum", width: 20 },
     ];
 
-    // Company Header
+    // Company Header - updated per request: +7(914) first, then +7(908), remove +7(999), add Вектор Комфорта
     sheet1.mergeCells("A1:F1");
     const companyCell = sheet1.getCell("A1");
-    companyCell.value = `ИП Сергеева М.В. | Монтаж кондиционеров | +7 (908) 640-11-66 | +7 (999) 420-11-19`;
+    companyCell.value = `ИП Сергеева М.В. | +7(914) 914-66-06 | +7(908) 640-11-66 | Вектор Комфорта - строительно монтажная компания`;
     companyCell.font = { name: "Arial", size: 9, color: { argb: "FF64748B" } };
     companyCell.alignment = { vertical: "middle", horizontal: "center" };
     sheet1.getRow(1).height = 18;
@@ -286,7 +286,7 @@ export async function POST(req: NextRequest) {
     const footerRowIdx = sheet1.rowCount + 1;
     sheet1.mergeCells(`A${footerRowIdx}:F${footerRowIdx}`);
     const footerCell = sheet1.getCell(`A${footerRowIdx}`);
-    footerCell.value = `Гарантия на монтаж 12 месяцев | Исполнитель работ: Кокорин Антон Олегович +7(908)640-11-66 | ИП Сергеева М.В. | Сформировано: ${new Date().toLocaleString("ru-RU")}`;
+    footerCell.value = `Гарантия 12 месяцев | Исполнители: Чебанов Д.Ю. +7(914)914-66-06, Кокорин А.О. +7(908)640-11-66 | ИП Сергеева М.В. Вектор Комфорта | Сформировано: ${new Date().toLocaleString("ru-RU")}`;
     footerCell.font = { name: "Arial", size: 8, color: { argb: "FF64748B" }, italic: true };
     footerCell.alignment = { horizontal: "center", wrapText: true };
 

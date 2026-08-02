@@ -54,6 +54,9 @@ export const OtherWorksTab: React.FC = () => {
   const [clientName, setClientName] = useState("");
   const [clientAddress, setClientAddress] = useState("");
   const [contractNumber, setContractNumber] = useState("67");
+  const [prepaymentPercent, setPrepaymentPercent] = useState(100);
+  const [prepaymentAmount, setPrepaymentAmount] = useState(0);
+  const [finalPaymentAmount, setFinalPaymentAmount] = useState(0);
   const [copied, setCopied] = useState(false);
 
   const addCustomWork = () => {
@@ -136,6 +139,13 @@ export const OtherWorksTab: React.FC = () => {
   const totalAdditional = additionalWishes.reduce((sum, w) => sum + (Number(w.amount) || 0), 0);
   const grandTotal = totalCustomWorks + totalEquipment + totalAdditional;
 
+  // Prepayment and final payment calculation
+  React.useEffect(() => {
+    const prepay = Math.round((grandTotal * (prepaymentPercent || 0)) / 100);
+    setPrepaymentAmount(prepay);
+    setFinalPaymentAmount(Math.max(0, grandTotal - prepay));
+  }, [grandTotal, prepaymentPercent]);
+
   const handlePrint = () => {
     printElementById("printable-other-works", `Другие_работы_договор_${contractNumber}`);
   };
@@ -145,37 +155,21 @@ export const OtherWorksTab: React.FC = () => {
   };
 
   const handleExportExcel = async () => {
-    // Create simple Excel via API using otherExpenses
-    const otherExpenses = [
-      ...customWorks.map(w => ({
-        description: `${w.name} ${w.quantity}м (работа ${w.workPricePerMeter}₽/м + материал ${w.materialPricePerMeter}₽/м)`,
-        amount: (w.quantity * w.workPricePerMeter) + (w.quantity * w.materialPricePerMeter),
-      })),
-      ...equipmentsForSale.filter(e => e.modelName && e.price > 0).map(e => ({
-        description: `Продажа кондиционера: ${e.modelName}`,
-        amount: e.price,
-      })),
-      ...additionalWishes.filter(w => w.description && w.amount > 0).map(w => ({
-        description: w.description,
-        amount: w.amount,
-      })),
-    ];
-
     try {
-      const res = await fetch("/api/export-excel", {
+      const res = await fetch("/api/export-other-works", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          modelName: `Другие виды работ: ${customWorks.map(w => w.name).join(", ").slice(0, 50)}`,
-          equipmentPrice: 0,
-          traceLength: 4,
-          complexity: "standard",
-          complexityHours: 0,
-          hasCableChannel: false,
-          otherExpenses,
+          customWorks,
+          equipmentsForSale,
+          additionalWishes,
           clientName,
           clientAddress,
-          installationDate: new Date().toISOString().split("T")[0],
+          contractNumber,
+          prepaymentPercent,
+          prepaymentAmount,
+          finalPaymentAmount,
+          grandTotal,
         }),
       });
       if (!res.ok) throw new Error("Ошибка");
@@ -188,39 +182,47 @@ export const OtherWorksTab: React.FC = () => {
 
   const handleExportPdf = async () => {
     try {
-      const res = await fetch("/api/export-pdf", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          modelName: `Другие виды работ`,
-          equipmentPrice: 0,
-          traceLength: 4,
-          complexity: "standard",
-          complexityHours: 0,
-          hasCableChannel: false,
-          otherExpenses: [
-            ...customWorks.map(w => ({
-              description: `${w.name} ${w.quantity}м`,
-              amount: (w.quantity * w.workPricePerMeter) + (w.quantity * w.materialPricePerMeter),
-            })),
-            ...equipmentsForSale.filter(e => e.modelName && e.price > 0).map(e => ({
-              description: `Продажа: ${e.modelName}`,
-              amount: e.price,
-            })),
-            ...additionalWishes.filter(w => w.description && w.amount > 0).map(w => ({
-              description: w.description,
-              amount: w.amount,
-            })),
-          ],
-          clientName,
-          clientAddress,
-        }),
-      });
-      if (!res.ok) throw new Error("PDF error");
-      const blob = await res.blob();
-      await downloadBlob(blob, `smeta_drugie_raboty_${contractNumber}.pdf`);
+      // Use canvas method for other works to preserve professional contract text with Russian
+      const { exportElementToPdf } = await import("@/lib/export-docx-pdf");
+      const pdf = await exportElementToPdf("printable-other-works", `smeta_drugie_raboty_${contractNumber}`);
+      pdf.save(`smeta_drugie_raboty_${contractNumber}.pdf`);
     } catch (e) {
-      alert("Ошибка PDF: " + (e as Error).message);
+      console.log("Canvas PDF failed, fallback to server", e);
+      try {
+        const res = await fetch("/api/export-pdf", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            modelName: `Другие виды работ`,
+            equipmentPrice: 0,
+            traceLength: 4,
+            complexity: "standard",
+            complexityHours: 0,
+            hasCableChannel: false,
+            otherExpenses: [
+              ...customWorks.map(w => ({
+                description: `${w.name} ${w.quantity}м`,
+                amount: (w.quantity * w.workPricePerMeter) + (w.quantity * w.materialPricePerMeter),
+              })),
+              ...equipmentsForSale.filter(e => e.modelName && e.price > 0).map(e => ({
+                description: `Продажа: ${e.modelName}`,
+                amount: e.price,
+              })),
+              ...additionalWishes.filter(w => w.description && w.amount > 0).map(w => ({
+                description: w.description,
+                amount: w.amount,
+              })),
+            ],
+            clientName,
+            clientAddress,
+          }),
+        });
+        if (!res.ok) throw new Error("PDF error");
+        const blob = await res.blob();
+        await downloadBlob(blob, `smeta_drugie_raboty_${contractNumber}.pdf`);
+      } catch (err) {
+        alert("Ошибка PDF: " + (err as Error).message);
+      }
     }
   };
 
@@ -473,8 +475,8 @@ export const OtherWorksTab: React.FC = () => {
         )}
       </div>
 
-      {/* Grand Total */}
-      <div className="bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 rounded-2xl p-6 text-white">
+      {/* Grand Total with prepayment */}
+      <div className="bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 rounded-2xl p-6 text-white space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="text-sm text-blue-200">Итоговая смета по другим видам работ:</div>
@@ -486,6 +488,58 @@ export const OtherWorksTab: React.FC = () => {
             <div className="text-3xl font-black text-amber-300">{formatRuble(grandTotal)}</div>
             <div className="text-2xs text-blue-200">К оплате</div>
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-4 border-t border-white/10">
+          <div className="md:col-span-1">
+            <label className="block text-2xs font-bold text-blue-200 mb-1">Предоплата %</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={5}
+                value={prepaymentPercent}
+                onChange={(e) => setPrepaymentPercent(parseInt(e.target.value, 10) || 0)}
+                className="flex-1 accent-amber-400"
+              />
+              <span className="font-mono font-bold text-sm bg-white/20 px-2 py-1 rounded min-w-[50px] text-center">
+                {prepaymentPercent}%
+              </span>
+            </div>
+          </div>
+          <div>
+            <label className="block text-2xs font-bold text-blue-200 mb-1">Предоплата сразу (₽)</label>
+            <input
+              type="number"
+              value={prepaymentAmount || ""}
+              onChange={(e) => {
+                const val = parseInt(e.target.value, 10) || 0;
+                setPrepaymentAmount(val);
+                setFinalPaymentAmount(Math.max(0, grandTotal - val));
+                setPrepaymentPercent(grandTotal > 0 ? Math.round((val / grandTotal) * 100) : 0);
+              }}
+              className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-xl text-sm font-bold font-mono text-white"
+            />
+          </div>
+          <div>
+            <label className="block text-2xs font-bold text-blue-200 mb-1">Остаток после работ (₽)</label>
+            <input
+              type="number"
+              value={finalPaymentAmount || ""}
+              onChange={(e) => {
+                const val = parseInt(e.target.value, 10) || 0;
+                setFinalPaymentAmount(val);
+                setPrepaymentAmount(Math.max(0, grandTotal - val));
+                setPrepaymentPercent(grandTotal > 0 ? Math.round(((grandTotal - val) / grandTotal) * 100) : 0);
+              }}
+              className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-xl text-sm font-bold font-mono text-white"
+            />
+          </div>
+        </div>
+
+        <div className="text-xs text-blue-200 bg-white/5 p-2 rounded-lg">
+          <span className="font-bold">Договор:</span> Заказчик вносит предоплату {prepaymentPercent}% в размере {formatRuble(prepaymentAmount)} сразу, остаток {formatRuble(finalPaymentAmount)} после выполнения работ.
         </div>
       </div>
 
@@ -535,9 +589,12 @@ export const OtherWorksTab: React.FC = () => {
             </div>
           )}
 
-          <div className="mt-6 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+          <div className="mt-6 p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-1">
             <p className="font-bold">Итого к оплате: {formatRuble(grandTotal)}</p>
             <p className="text-2xs text-slate-600">В т.ч. работа: {formatRuble(totalWork)}, материал: {formatRuble(totalMaterial)}, оборудование: {formatRuble(totalEquipment)}, доп. пожелания: {formatRuble(totalAdditional)}</p>
+            <p className="text-xs font-bold mt-2">Порядок расчетов:</p>
+            <p className="text-2xs">Заказчик вносит предоплату {prepaymentPercent}% в размере {formatRuble(prepaymentAmount)} сразу, остаток {formatRuble(finalPaymentAmount)} после выполнения работ.</p>
+            <p className="text-2xs">Предоплата по номеру +7-999-420-11-19 Т-Банк, остаток после подписания Акта.</p>
           </div>
 
           <div className="mt-6 border-t-2 border-slate-800 pt-4 text-xs">
