@@ -18,6 +18,7 @@ export interface EquipmentInput {
   traceLength?: number;
   hasCableChannel?: boolean;
   cableChannelMeters?: number;
+  hasInstallation?: boolean; // Галочка монтаж - продажа без монтажа
 }
 
 export interface OtherExpense {
@@ -148,6 +149,7 @@ export function calculateEstimate(inputs: EstimateInputs): EstimateCalculationRe
       const eqPrice = Number(eq.equipmentPrice) || 0;
       const eqTrace = Math.max(1, Number(eq.traceLength) || 4);
       const eqHasCable = Boolean(eq.hasCableChannel);
+      const eqHasInstall = eq.hasInstallation !== undefined ? Boolean(eq.hasInstallation) : true; // Галочка монтаж
       
       let eqCableMeters = 0;
       if (eqHasCable) {
@@ -159,25 +161,29 @@ export function calculateEstimate(inputs: EstimateInputs): EstimateCalculationRe
         }
       }
 
-      const eqExtraMeters = Math.max(0, eqTrace - 5);
+      const eqExtraMeters = eqHasInstall ? Math.max(0, eqTrace - 5) : 0;
       const eqExtraCost = eqExtraMeters * EXTRA_TRACE_PRICE_PER_METER;
-      const eqCablePacks = eqCableMeters > 0 ? Math.ceil(eqCableMeters / 2) : 0;
-      const eqCableCost = eqCablePacks * CABLE_CHANNEL_PACK_PRICE;
+      const eqCablePacks = eqHasInstall && eqCableMeters > 0 ? Math.ceil(eqCableMeters / 2) : 0;
+      const eqCableCost = eqHasInstall ? eqCablePacks * CABLE_CHANNEL_PACK_PRICE : 0;
 
       equipmentTotal += eqPrice;
-      baseInstallTotal += BASE_INSTALLATION_PRICE;
-      extraTraceTotal += eqExtraCost;
-      extraTraceMetersTotal += eqExtraMeters;
-      cableChannelTotal += eqCableCost;
-      cableChannelPacksTotal += eqCablePacks;
-      cableChannelMetersTotal += eqCableMeters;
+      
+      if (eqHasInstall) {
+        baseInstallTotal += BASE_INSTALLATION_PRICE;
+        extraTraceTotal += eqExtraCost;
+        extraTraceMetersTotal += eqExtraMeters;
+        cableChannelTotal += eqCableCost;
+        cableChannelPacksTotal += eqCablePacks;
+        cableChannelMetersTotal += eqCableMeters;
+      }
 
       const prefix = equipments.length > 1 ? `Кондиционер ${eqIdx + 1}: ` : `Кондиционер `;
       
       if (eqPrice > 0 || eq.modelName) {
+        const saleType = eqHasInstall ? "" : " (продажа без монтажа)";
         items.push({
           id: itemCounter++,
-          name: `${prefix}${eq.modelName || "Сплит-система"}`,
+          name: `${prefix}${eq.modelName || "Сплит-система"}${saleType}`,
           quantity: 1,
           unit: "шт",
           pricePerUnit: eqPrice,
@@ -185,43 +191,45 @@ export function calculateEstimate(inputs: EstimateInputs): EstimateCalculationRe
         });
       }
 
-      const installName = equipments.length > 1 
-        ? `Стандартный монтаж (трасса до 5 м) - блок ${eqIdx + 1} (${eqTrace}м)` 
-        : `Стандартный монтаж (трасса до 5 м) (${eqTrace}м)`;
-      
-      items.push({
-        id: itemCounter++,
-        name: installName,
-        quantity: 1,
-        unit: "компл",
-        pricePerUnit: BASE_INSTALLATION_PRICE,
-        total: BASE_INSTALLATION_PRICE,
-      });
-
-      if (eqExtraMeters > 0) {
+      if (eqHasInstall) {
+        const installName = equipments.length > 1 
+          ? `Стандартный монтаж (трасса до 5 м) - блок ${eqIdx + 1} (${eqTrace}м)` 
+          : `Стандартный монтаж (трасса до 5 м) (${eqTrace}м)`;
+        
         items.push({
           id: itemCounter++,
-          name: equipments.length > 1 
-            ? `Доплата за трассу свыше 5 м - блок ${eqIdx + 1} (${eqExtraMeters} м)` 
-            : `Доплата за трассу свыше 5 м (${eqExtraMeters} м)`,
-          quantity: eqExtraMeters,
-          unit: "м",
-          pricePerUnit: EXTRA_TRACE_PRICE_PER_METER,
-          total: eqExtraCost,
+          name: installName,
+          quantity: 1,
+          unit: "компл",
+          pricePerUnit: BASE_INSTALLATION_PRICE,
+          total: BASE_INSTALLATION_PRICE,
         });
-      }
 
-      if (eqHasCable && eqCablePacks > 0) {
-        items.push({
-          id: itemCounter++,
-          name: equipments.length > 1
-            ? `Кабель-канал - блок ${eqIdx + 1} (${eqCableMeters} м)`
-            : `Кабель-канал (${eqCableMeters} м)`,
-          quantity: eqCablePacks,
-          unit: "упак (2 м)",
-          pricePerUnit: CABLE_CHANNEL_PACK_PRICE,
-          total: eqCableCost,
-        });
+        if (eqExtraMeters > 0) {
+          items.push({
+            id: itemCounter++,
+            name: equipments.length > 1 
+              ? `Доплата за трассу свыше 5 м - блок ${eqIdx + 1} (${eqExtraMeters} м)` 
+              : `Доплата за трассу свыше 5 м (${eqExtraMeters} м)`,
+            quantity: eqExtraMeters,
+            unit: "м",
+            pricePerUnit: EXTRA_TRACE_PRICE_PER_METER,
+            total: eqExtraCost,
+          });
+        }
+
+        if (eqHasCable && eqCablePacks > 0) {
+          items.push({
+            id: itemCounter++,
+            name: equipments.length > 1
+              ? `Кабель-канал - блок ${eqIdx + 1} (${eqCableMeters} м)`
+              : `Кабель-канал (${eqCableMeters} м)`,
+            quantity: eqCablePacks,
+            unit: "упак (2 м)",
+            pricePerUnit: CABLE_CHANNEL_PACK_PRICE,
+            total: eqCableCost,
+          });
+        }
       }
     });
 

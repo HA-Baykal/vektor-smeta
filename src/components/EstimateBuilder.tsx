@@ -443,23 +443,39 @@ export const EstimateBuilder: React.FC<EstimateBuilderProps> = ({ inputs, onChan
                   </div>
                 </div>
 
-                {/* Per-equipment trace and cable */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-slate-200/60">
-                  <div className="flex items-center justify-between gap-2">
-                    <label className="text-2xs font-bold text-slate-700">Трасса (м):</label>
+                {/* Per-equipment hasInstallation checkbox + trace and cable */}
+                <div className="flex items-center gap-2 pt-2 border-t border-slate-200/60">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={eq.hasInstallation !== false}
+                      onChange={(e) => updateEquipment(idx, "hasInstallation", e.target.checked)}
+                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-2xs font-bold text-slate-800">Монтаж</span>
+                  </label>
+                  <span className="text-2xs text-slate-500">
+                    {eq.hasInstallation !== false ? "с монтажом 18 000 ₽" : "только продажа без монтажа"}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                  <div className={`flex items-center justify-between gap-2 ${eq.hasInstallation === false ? "opacity-40 pointer-events-none" : ""}`}>
+                    <label className="text-2xs font-bold text-slate-700">Трасса (м): {eq.hasInstallation === false && <span className="text-2xs font-normal text-slate-400">(не нужно без монтажа)</span>}</label>
                     <div className="flex items-center gap-2">
                       <input
                         type="range"
                         min={1}
                         max={25}
                         value={eqTrace}
+                        disabled={eq.hasInstallation === false}
                         onChange={(e) => updateEquipment(idx, "traceLength", parseInt(e.target.value, 10))}
-                        className="w-20 accent-blue-600 h-1.5"
+                        className="w-20 accent-blue-600 h-1.5 disabled:opacity-50"
                       />
                       <span className="font-mono font-bold text-xs bg-white px-2 py-1 rounded border min-w-[45px] text-center">
                         {eqTrace} м
                       </span>
-                      {eqExtra > 0 && (
+                      {eqExtra > 0 && eq.hasInstallation !== false && (
                         <span className="text-2xs text-amber-700 font-bold">
                           +{eqExtra}м = {(eqExtra * EXTRA_TRACE_PRICE_PER_METER).toLocaleString("ru-RU")}₽
                         </span>
@@ -467,13 +483,14 @@ export const EstimateBuilder: React.FC<EstimateBuilderProps> = ({ inputs, onChan
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between gap-2">
+                  <div className={`flex items-center justify-between gap-2 ${eq.hasInstallation === false ? "opacity-40 pointer-events-none" : ""}`}>
                     <label className="text-2xs font-bold text-slate-700">Кабель-канал:</label>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
+                        disabled={eq.hasInstallation === false}
                         onClick={() => updateEquipment(idx, "hasCableChannel", !eq.hasCableChannel)}
-                        className={`px-2.5 py-1 rounded-lg text-2xs font-bold border transition ${
+                        className={`px-2.5 py-1 rounded-lg text-2xs font-bold border transition disabled:opacity-50 ${
                           eq.hasCableChannel ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-600 border-slate-300"
                         }`}
                       >
@@ -486,8 +503,9 @@ export const EstimateBuilder: React.FC<EstimateBuilderProps> = ({ inputs, onChan
                             min={1}
                             max={eqTrace}
                             value={eqCableMeters}
+                            disabled={eq.hasInstallation === false}
                             onChange={(e) => updateEquipment(idx, "cableChannelMeters", parseInt(e.target.value, 10) || 0)}
-                            className="w-14 px-1.5 py-1 bg-white border border-slate-300 rounded text-2xs font-mono font-bold text-center"
+                            className="w-14 px-1.5 py-1 bg-white border border-slate-300 rounded text-2xs font-mono font-bold text-center disabled:opacity-50"
                           />
                           <span className="text-2xs text-slate-500">м = {eqPacks}уп { (eqPacks * CABLE_CHANNEL_PACK_PRICE).toLocaleString("ru-RU")}₽</span>
                         </div>
